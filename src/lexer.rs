@@ -30,10 +30,6 @@ pub enum Token {
 impl Token {
     fn parse(input: &str) -> Result<(&str, Self, usize), LexError> {
         if input.is_empty() {
-
-
-
-
             Ok((input, Self::Eof, 0))
         } else {
             // unwrap ok as already tested if input is empty
