@@ -118,6 +118,7 @@ fn test_op_parse() {
 
 #[test]
 fn test_token_parse() {
+    assert_eq!(1, 0);
     assert_eq!(Token::parse(""), Ok(("", Token::Eof, 0)));
     assert_eq!(Token::parse("a"), Err(LexError::new('a')));
     assert_eq!(Token::parse("1"), Ok(("", Token::Value(1), 1)));
