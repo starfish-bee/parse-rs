@@ -1,26 +1,51 @@
-pub fn lex(input: &str) -> Result<Vec<(Token, usize)>, LexError> {
-    let mut out = Vec::new();
-    let mut i = input;
-    let mut offset = 0;
-    loop {
-        let (i_temp, _, off) = take_while(i, char::is_whitespace);
-        offset += off;
-        let (i_temp, token, off) = Token::parse(i_temp).map_err(|e| LexError::offset(e, offset))?;
-
-        if let Token::Eof = token {
-            break;
-        } else {
-            out.push((token, offset));
-        }
-
-        offset += off;
-        i = i_temp;
-    }
-
-    Ok(out)
-}
+use std::collections::binary_heap::Iter;
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Lexer {
+    pub tokens: Vec<(Token, usize)>,
+}
+
+impl Lexer {
+    pub fn lex(input: &str) -> Result<Self, LexError> {
+        let mut tokens = Vec::new();
+        let mut i = input;
+        let mut offset = 0;
+        loop {
+            let (i_temp, _, off) = take_while(i, char::is_whitespace);
+            offset += off;
+            let (i_temp, token, off) =
+                Token::parse(i_temp).map_err(|e| LexError::offset(e, offset))?;
+
+            if let Token::Eof = token {
+                tokens.push((token, offset));
+                break;
+            } else {
+                tokens.push((token, offset));
+            }
+
+            offset += off;
+            i = i_temp;
+        }
+
+        tokens.reverse();
+
+        Ok(Self { tokens })
+    }
+
+    pub fn peek(&self) -> Option<(Token, usize)> {
+        self.tokens.last().copied()
+    }
+}
+
+impl Iterator for Lexer {
+    type Item = (Token, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.tokens.pop()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token {
     Value(u32),
     Op(Operator),
@@ -45,7 +70,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operator {
     Add,
     Sub,
@@ -69,6 +94,14 @@ impl Operator {
         };
 
         Ok((&input[1..], op, 1))
+    }
+
+    pub fn precedence(&self) -> (usize, usize) {
+        match self {
+            Self::Add | Self::Sub => (1, 2),
+            Self::Mul | Self::Div => (3, 4),
+            _ => (0, 0),
+        }
     }
 }
 
@@ -133,30 +166,54 @@ fn test_lex() {
     use Operator::*;
     use Token::*;
 
-    assert_eq!(lex("1"), Ok(vec![(Value(1), 0)]));
     assert_eq!(
-        lex("1+16"),
-        Ok(vec![(Value(1), 0), (Op(Add), 1), (Value(16), 2)])
+        Lexer::lex("1"),
+        Ok(Lexer {
+            tokens: vec![(Eof, 1), (Value(1), 0)]
+        })
     );
-    assert_eq!(lex("1+16+a"), Err(LexError::new('a').offset(5)));
     assert_eq!(
-        lex("(1+16)/3*(450-5/3)"),
-        Ok(vec![
-            (Op(LeftParen), 0),
-            (Value(1), 1),
-            (Op(Add), 2),
-            (Value(16), 3),
-            (Op(RightParen), 5),
-            (Op(Div), 6),
-            (Value(3), 7),
-            (Op(Mul), 8),
-            (Op(LeftParen), 9),
-            (Value(450), 10),
-            (Op(Sub), 13),
-            (Value(5), 14),
-            (Op(Div), 15),
-            (Value(3), 16),
-            (Op(RightParen), 17)
-        ])
+        Lexer::lex("1 + 16"),
+        Ok(Lexer {
+            tokens: vec![(Eof, 6), (Value(16), 4), (Op(Add), 2), (Value(1), 0)]
+        })
     );
+    assert_eq!(Lexer::lex("1+16+a"), Err(LexError::new('a').offset(5)));
+    assert_eq!(
+        Lexer::lex("(1+16)/3*(450-5/   3)"),
+        Ok(Lexer {
+            tokens: vec![
+                (Eof, 21),
+                (Op(RightParen), 20),
+                (Value(3), 19),
+                (Op(Div), 15),
+                (Value(5), 14),
+                (Op(Sub), 13),
+                (Value(450), 10),
+                (Op(LeftParen), 9),
+                (Op(Mul), 8),
+                (Value(3), 7),
+                (Op(Div), 6),
+                (Op(RightParen), 5),
+                (Value(16), 3),
+                (Op(Add), 2),
+                (Value(1), 1),
+                (Op(LeftParen), 0),
+            ]
+        })
+    );
+}
+
+#[test]
+fn test_lex_iter() {
+    use Operator::*;
+    use Token::*;
+
+    let mut lex = Lexer::lex("1+16").unwrap();
+
+    assert_eq!(lex.next(), Some((Value(1), 0)));
+    assert_eq!(lex.next(), Some((Op(Add), 1)));
+    assert_eq!(lex.next(), Some((Value(16), 2)));
+    assert_eq!(lex.next(), Some((Eof, 4)));
+    assert_eq!(lex.next(), None);
 }
