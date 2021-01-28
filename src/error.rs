@@ -1,6 +1,7 @@
 use std::{error, fmt};
 
-use crate::lexer::Token;
+// TODO: kind of a mess- think about where errors should be defined, esp. if making tokens pluggable
+use crate::tokens::Token;
 
 pub struct Reporter<'a> {
     error: ErrorKind,

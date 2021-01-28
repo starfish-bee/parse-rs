@@ -1,4 +1,32 @@
 use crate::error::LexError;
+use crate::utils::take_while;
+
+// currently, valid tokens include operators (see crate::operators) and valid u32 strings only
+// TODO: expand range of valid values
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Token {
+    Value(u32),
+    Op(Operator),
+    Eof,
+}
+
+impl Token {
+    pub(crate) fn parse(input: &str) -> Result<(&str, Self, usize), LexError> {
+        if input.is_empty() {
+            Ok((input, Self::Eof, 0))
+        } else {
+            // unwrap ok as already tested if input is empty
+            if input.chars().next().unwrap().is_numeric() {
+                let (input, val, off) = take_while(input, char::is_numeric);
+                // unwrap ok as val is guaranteed to be a string of numbers
+                Ok((input, Self::Value(val.parse().unwrap()), off))
+            } else {
+                let (input, op, off) = Operator::parse(input)?;
+                Ok((input, Self::Op(op), off))
+            }
+        }
+    }
+}
 
 // TODO: differentiate between prefix, postfix and infix operators
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -44,4 +72,16 @@ impl Operator {
 fn test_op_parse() {
     assert_eq!(Operator::parse("a"), Err(LexError::new('a')));
     assert_eq!(Operator::parse("/123"), Ok(("123", Operator::Div, 1)));
+}
+
+#[test]
+fn test_token_parse() {
+    assert_eq!(Token::parse(""), Ok(("", Token::Eof, 0)));
+    assert_eq!(Token::parse("a"), Err(LexError::new('a')));
+    assert_eq!(Token::parse("1"), Ok(("", Token::Value(1), 1)));
+    assert_eq!(Token::parse("123abc4"), Ok(("abc4", Token::Value(123), 3)));
+    assert_eq!(
+        Token::parse("+qwerty"),
+        Ok(("qwerty", Token::Op(Operator::Add), 1))
+    );
 }

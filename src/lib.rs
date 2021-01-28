@@ -1,10 +1,11 @@
 pub mod error;
 pub mod lexer;
-pub mod operator;
+pub mod tokens;
+pub mod utils;
 
 use error::{ErrorKind, ParseError};
-use lexer::{Lexer, Token};
-use operator::Operator;
+use lexer::Lexer;
+use tokens::{Operator, Token};
 
 pub fn parse(input: &str) -> Result<Tree, ErrorKind> {
     let mut tokens = Lexer::lex(input)?;
@@ -89,7 +90,7 @@ fn test_parse() {
         Err(ErrorKind::ParseError(ParseError::new(
             Token::Eof,
             0,
-            Some("Token::Value(u32)".to_owned())
+            Some("expected value".to_owned())
         )))
     );
     assert_eq!(
