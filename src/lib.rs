@@ -16,9 +16,20 @@ fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
     // unwrap ok as long as Eof always checked for
     let mut lhs = match tokens.next().unwrap() {
         (Token::Value(x), _) => Tree::Atom(x),
-        (token, i) => {
-            return Err(ParseError::new(token, i, Some("expected value".to_owned())).into())
+        (Token::Op(Operator::LeftParen), _) => {
+            let lhs = parse_impl(tokens, 0)?;
+            match tokens.next().unwrap() {
+                (Token::Op(Operator::RightParen), _) => lhs,
+                (token, i) => {
+                    return Err(ErrorKind::from(ParseError::new(
+                        token,
+                        i,
+                        "expected ')'".to_string(),
+                    )))
+                }
+            }
         }
+        (token, i) => return Err(ParseError::new(token, i, "expected value".to_owned()).into()),
     };
 
     loop {
@@ -27,14 +38,12 @@ fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
             (Token::Eof, _) => break,
             (Token::Op(x), _) => x,
             (token, i) => {
-                return Err(
-                    ParseError::new(token, i, Some("expected operator or eof".to_owned())).into(),
-                )
+                return Err(ParseError::new(token, i, "expected operator or eof".to_owned()).into())
             }
         };
 
         let (l_prec, r_prec) = op.precedence();
-        if l_prec < prec {
+        if l_prec <= prec {
             break;
         }
 
@@ -90,7 +99,7 @@ fn test_parse() {
         Err(ErrorKind::ParseError(ParseError::new(
             Token::Eof,
             0,
-            Some("expected value".to_owned())
+            "expected value".to_owned()
         )))
     );
     assert_eq!(
@@ -98,7 +107,7 @@ fn test_parse() {
         Err(ErrorKind::ParseError(ParseError::new(
             Token::Value(1),
             2,
-            Some("Token::Op(Operator) or Token::Eof".to_owned())
+            "expected operator or eof".to_owned()
         )))
     );
     assert_eq!(format!("{:?}", parse("1").unwrap()), "1");
@@ -113,5 +122,18 @@ fn test_parse() {
     assert_eq!(
         format!("{:?}", parse("1*2+1").unwrap()),
         "Add [Mul [1, 2], 1]"
+    );
+    assert_eq!(format!("{:?}", parse("(1)").unwrap()), "1");
+    assert_eq!(
+        format!("{:?}", parse("1*(2+1)").unwrap()),
+        "Mul [1, Add [2, 1]]"
+    );
+    assert_eq!(
+        parse("(1 + 1"),
+        Err(ErrorKind::ParseError(ParseError::new(
+            Token::Eof,
+            6,
+            "expected ')'".to_owned()
+        )))
     );
 }

@@ -25,9 +25,7 @@ impl<'a> fmt::Debug for Reporter<'a> {
                     "parse error - unexpected token '{:?}' at position {}",
                     error.token, error.offset
                 )?;
-                if let Some(message) = &error.message {
-                    writeln!(f, "{}", message)?;
-                };
+                writeln!(f, "{}", error.message)?;
                 error.offset
             }
         };
@@ -77,11 +75,11 @@ impl From<ParseError> for ErrorKind {
 pub struct ParseError {
     token: Token,
     offset: usize,
-    message: Option<String>,
+    message: String,
 }
 
 impl ParseError {
-    pub(crate) fn new(token: Token, offset: usize, message: Option<String>) -> Self {
+    pub(crate) fn new(token: Token, offset: usize, message: String) -> Self {
         Self {
             token,
             offset,
@@ -136,7 +134,7 @@ fn test_reporter() {
     let parse_error = ErrorKind::from(ParseError {
         token: Token::Value(0),
         offset: 5,
-        message: Some("message goes here".to_string()),
+        message: "message goes here".to_string(),
     });
 
     assert_eq!(

@@ -56,7 +56,7 @@ impl Operator {
     }
 
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
-    // for op => (x, y) op is left-associative if x < y, and right-associative if x >= y. Each level
+    // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
     // of precedence should begin with an odd number.
     // TODO: possible macro generation
     pub(crate) fn precedence(&self) -> (usize, usize) {
