@@ -1,6 +1,10 @@
+pub mod error;
 pub mod lexer;
+pub mod operator;
 
-use lexer::{LexError, Lexer, Operator, Token};
+use error::{ErrorKind, ParseError};
+use lexer::{Lexer, Token};
+use operator::Operator;
 
 pub fn parse(input: &str) -> Result<Tree, ErrorKind> {
     let mut tokens = Lexer::lex(input)?;
@@ -9,11 +13,10 @@ pub fn parse(input: &str) -> Result<Tree, ErrorKind> {
 
 fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
     // unwrap ok as long as Eof always checked for
-    println!("{:?}", tokens);
     let mut lhs = match tokens.next().unwrap() {
         (Token::Value(x), _) => Tree::Atom(x),
         (token, i) => {
-            return Err(ParseError::new(token, i, Some("Token::Value(u32)".to_owned())).into())
+            return Err(ParseError::new(token, i, Some("expected value".to_owned())).into())
         }
     };
 
@@ -23,12 +26,9 @@ fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
             (Token::Eof, _) => break,
             (Token::Op(x), _) => x,
             (token, i) => {
-                return Err(ParseError::new(
-                    token,
-                    i,
-                    Some("Token::Op(Operator) or Token::Eof".to_owned()),
+                return Err(
+                    ParseError::new(token, i, Some("expected operator or eof".to_owned())).into(),
                 )
-                .into())
             }
         };
 
@@ -69,41 +69,6 @@ impl std::fmt::Debug for Tree {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ErrorKind {
-    LexError(LexError),
-    ParseError(ParseError),
-}
-
-impl From<LexError> for ErrorKind {
-    fn from(error: LexError) -> Self {
-        ErrorKind::LexError(error)
-    }
-}
-
-impl From<ParseError> for ErrorKind {
-    fn from(error: ParseError) -> Self {
-        ErrorKind::ParseError(error)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseError {
-    token: Token,
-    offset: usize,
-    expected: Option<String>,
-}
-
-impl ParseError {
-    fn new(token: Token, offset: usize, expected: Option<String>) -> Self {
-        Self {
-            token,
-            offset,
-            expected,
-        }
-    }
-}
-
 #[test]
 fn test_fmt() {
     let tree = Tree::Expr((
@@ -136,6 +101,10 @@ fn test_parse() {
         )))
     );
     assert_eq!(format!("{:?}", parse("1").unwrap()), "1");
+    assert_eq!(
+        format!("{:?}", parse("1+1+2").unwrap()),
+        "Add [Add [1, 1], 2]"
+    );
     assert_eq!(
         format!("{:?}", parse("1+1*2").unwrap()),
         "Add [1, Mul [1, 2]]"

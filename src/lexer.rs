@@ -1,16 +1,21 @@
-use std::collections::binary_heap::Iter;
+use crate::error::LexError;
+use crate::operator::Operator;
 
+// stores both the tokens and their positions for better error reporting
 #[derive(Debug, PartialEq, Eq)]
 pub struct Lexer {
     pub tokens: Vec<(Token, usize)>,
 }
 
 impl Lexer {
-    pub fn lex(input: &str) -> Result<Self, LexError> {
+    pub(crate) fn lex(input: &str) -> Result<Self, LexError> {
         let mut tokens = Vec::new();
         let mut i = input;
         let mut offset = 0;
         loop {
+            // whitespace is ignored but the offset is retained for error reporting. i_temp is used
+            // as i must be retained between loops, and let binding would shadow it and cause it to be dropped
+            // after each iteration
             let (i_temp, _, off) = take_while(i, char::is_whitespace);
             offset += off;
             let (i_temp, token, off) =
@@ -27,12 +32,13 @@ impl Lexer {
             i = i_temp;
         }
 
+        // the tokens are stored in a reverse state to allow easy iteration using 'pop' method
         tokens.reverse();
 
         Ok(Self { tokens })
     }
 
-    pub fn peek(&self) -> Option<(Token, usize)> {
+    pub(crate) fn peek(&self) -> Option<(Token, usize)> {
         self.tokens.last().copied()
     }
 }
@@ -45,6 +51,8 @@ impl Iterator for Lexer {
     }
 }
 
+// currently, valid tokens include operators (see crate::operators) and valid u32 strings only
+// TODO: expand range of valid values
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token {
     Value(u32),
@@ -70,60 +78,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Operator {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    LeftParen,
-    RightParen,
-}
-
-impl Operator {
-    fn parse(input: &str) -> Result<(&str, Self, usize), LexError> {
-        // unwrap assumes input already checked for empty
-        let op = match input.chars().next().unwrap() {
-            '+' => Self::Add,
-            '-' => Self::Sub,
-            '*' => Self::Mul,
-            '/' => Self::Div,
-            '(' => Self::LeftParen,
-            ')' => Self::RightParen,
-            x => return Err(LexError::new(x)),
-        };
-
-        Ok((&input[1..], op, 1))
-    }
-
-    pub fn precedence(&self) -> (usize, usize) {
-        match self {
-            Self::Add | Self::Sub => (1, 2),
-            Self::Mul | Self::Div => (3, 4),
-            _ => (0, 0),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct LexError {
-    symbol: char,
-    offset: usize,
-}
-
-impl LexError {
-    fn new(symbol: char) -> Self {
-        Self { symbol, offset: 0 }
-    }
-
-    fn offset(self, offset: usize) -> Self {
-        Self {
-            symbol: self.symbol,
-            offset: self.offset + offset,
-        }
-    }
-}
-
+// helper function for consuming whitespace and multi-character tokens
 fn take_while<P>(input: &str, predicate: P) -> (&str, &str, usize)
 where
     P: Fn(char) -> bool,
@@ -141,12 +96,6 @@ fn test_take_while() {
     assert_eq!(take_while("abc", char::is_alphabetic), ("", "abc", 3));
     assert_eq!(take_while(" abc", char::is_alphabetic), (" abc", "", 0));
     assert_eq!(take_while(" abc", char::is_whitespace), ("abc", " ", 1));
-}
-
-#[test]
-fn test_op_parse() {
-    assert_eq!(Operator::parse("a"), Err(LexError::new('a')));
-    assert_eq!(Operator::parse("/123"), Ok(("123", Operator::Div, 1)));
 }
 
 #[test]
