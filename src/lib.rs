@@ -7,19 +7,26 @@ use error::{ErrorKind, ParseError};
 use lexer::Lexer;
 use tokens::{Operator, Token};
 
-pub fn parse(input: &str) -> Result<Tree, ErrorKind> {
+pub fn parse<T>(input: &str) -> Result<Tree<T>, ErrorKind<T>>
+where
+    T: Operator + std::fmt::Debug,
+{
     let mut tokens = Lexer::lex(input)?;
     parse_impl(&mut tokens, 0)
 }
 
-fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
+fn parse_impl<T>(tokens: &mut Lexer<T>, prec: usize) -> Result<Tree<T>, ErrorKind<T>>
+where
+    T: Operator + std::fmt::Debug,
+{
+    println!("{:?}", tokens);
     // unwrap ok as long as Eof always checked for
     let mut lhs = match tokens.next().unwrap() {
         (Token::Value(x), _) => Tree::Atom(x),
-        (Token::Op(Operator::LeftParen), _) => {
+        (Token::LeftParen, _) => {
             let lhs = parse_impl(tokens, 0)?;
             match tokens.next().unwrap() {
-                (Token::Op(Operator::RightParen), _) => lhs,
+                (Token::RightParen, _) => lhs,
                 (token, i) => {
                     return Err(ErrorKind::from(ParseError::new(
                         token,
@@ -35,7 +42,7 @@ fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
     loop {
         // unwrap ok as long as Eof always checked for
         let op = match tokens.peek().unwrap() {
-            (Token::Eof, _) => break,
+            (Token::Eof, _) | (Token::RightParen, _) => break,
             (Token::Op(x), _) => x,
             (token, i) => {
                 return Err(ParseError::new(token, i, "expected operator or eof".to_owned()).into())
@@ -55,12 +62,15 @@ fn parse_impl(tokens: &mut Lexer, prec: usize) -> Result<Tree, ErrorKind> {
 }
 
 #[derive(PartialEq, Eq)]
-pub enum Tree {
+pub enum Tree<T> {
     Atom(u32),
-    Expr((Operator, Vec<Tree>)),
+    Expr((T, Vec<Tree<T>>)),
 }
 
-impl std::fmt::Debug for Tree {
+impl<T> std::fmt::Debug for Tree<T>
+where
+    T: std::fmt::Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Atom(x) => write!(f, "{:?}", x)?,
@@ -79,61 +89,104 @@ impl std::fmt::Debug for Tree {
     }
 }
 
-#[test]
-fn test_fmt() {
-    let tree = Tree::Expr((
-        Operator::Add,
-        vec![
-            Tree::Expr((Operator::Mul, vec![Tree::Atom(3), Tree::Atom(7)])),
-            Tree::Atom(20),
-        ],
-    ));
-    assert_eq!(format!("{:?}", tree), "Add [Mul [3, 7], 20]")
-}
+#[cfg(test)]
+mod test {
+    use crate::{
+        error::{ErrorKind, ParseError},
+        tokens::Token,
+        {parse, Tree},
+    };
 
-#[test]
-fn test_parse() {
-    assert_eq!(format!("{:?}", parse("1+1").unwrap()), "Add [1, 1]");
-    assert_eq!(
-        parse(""),
-        Err(ErrorKind::ParseError(ParseError::new(
-            Token::Eof,
-            0,
-            "expected value".to_owned()
-        )))
-    );
-    assert_eq!(
-        parse("1 1"),
-        Err(ErrorKind::ParseError(ParseError::new(
-            Token::Value(1),
-            2,
-            "expected operator or eof".to_owned()
-        )))
-    );
-    assert_eq!(format!("{:?}", parse("1").unwrap()), "1");
-    assert_eq!(
-        format!("{:?}", parse("1+1+2").unwrap()),
-        "Add [Add [1, 1], 2]"
-    );
-    assert_eq!(
-        format!("{:?}", parse("1+1*2").unwrap()),
-        "Add [1, Mul [1, 2]]"
-    );
-    assert_eq!(
-        format!("{:?}", parse("1*2+1").unwrap()),
-        "Add [Mul [1, 2], 1]"
-    );
-    assert_eq!(format!("{:?}", parse("(1)").unwrap()), "1");
-    assert_eq!(
-        format!("{:?}", parse("1*(2+1)").unwrap()),
-        "Mul [1, Add [2, 1]]"
-    );
-    assert_eq!(
-        parse("(1 + 1"),
-        Err(ErrorKind::ParseError(ParseError::new(
-            Token::Eof,
-            6,
-            "expected ')'".to_owned()
-        )))
-    );
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    pub enum Op {
+        Add,
+        Sub,
+        Mul,
+        Div,
+    }
+
+    impl crate::tokens::Operator for Op {
+        fn parse(input: &str) -> Option<(&str, Self, usize)> {
+            // unwrap assumes input already checked for empty
+            let op = match input.chars().next().unwrap() {
+                '+' => Self::Add,
+                '-' => Self::Sub,
+                '*' => Self::Mul,
+                '/' => Self::Div,
+                _ => return None,
+            };
+
+            Some((&input[1..], op, 1))
+        }
+
+        fn precedence(&self) -> (usize, usize) {
+            match self {
+                Self::Add | Self::Sub => (1, 2),
+                Self::Mul | Self::Div => (3, 4),
+            }
+        }
+    }
+
+    #[test]
+    fn test_fmt() {
+        let tree = Tree::Expr((
+            Op::Add,
+            vec![
+                Tree::Expr((Op::Mul, vec![Tree::Atom(3), Tree::Atom(7)])),
+                Tree::Atom(20),
+            ],
+        ));
+        assert_eq!(format!("{:?}", tree), "Add [Mul [3, 7], 20]")
+    }
+
+    #[test]
+    fn test_parse() {
+        // assert_eq!(format!("{:?}", parse::<Op>("1+1").unwrap()), "Add [1, 1]");
+        // assert_eq!(
+        //     parse::<Op>(""),
+        //     Err(ErrorKind::ParseError(ParseError::new(
+        //         Token::Eof,
+        //         0,
+        //         "expected value".to_owned()
+        //     )))
+        // );
+        // assert_eq!(
+        //     parse::<Op>("1 1"),
+        //     Err(ErrorKind::ParseError(ParseError::new(
+        //         Token::Value(1),
+        //         2,
+        //         "expected operator or eof".to_owned()
+        //     )))
+        // );
+        // assert_eq!(format!("{:?}", parse::<Op>("1").unwrap()), "1");
+        // assert_eq!(
+        //     format!("{:?}", parse::<Op>("1+1+2").unwrap()),
+        //     "Add [Add [1, 1], 2]"
+        // );
+        // assert_eq!(
+        //     format!("{:?}", parse::<Op>("1+1*2").unwrap()),
+        //     "Add [1, Mul [1, 2]]"
+        // );
+        // assert_eq!(
+        //     format!("{:?}", parse::<Op>("1*2+1").unwrap()),
+        //     "Add [Mul [1, 2], 1]"
+        // );
+        assert_eq!(format!("{:?}", parse::<Op>("(1)").unwrap()), "1");
+        assert_eq!(
+            format!("{:?}", parse::<Op>("1*(2+1)").unwrap()),
+            "Mul [1, Add [2, 1]]"
+        );
+        assert_eq!(
+            format!("{:?}", parse::<Op>("1*(2+1*(3+4))").unwrap()),
+            "Mul [1, Add [2, Mul [1, Add [3, 4]]]]"
+        );
+        assert_eq!(
+            parse::<Op>("(1 + 1"),
+            Err(ErrorKind::ParseError(ParseError::new(
+                Token::Eof,
+                6,
+                "expected ')'".to_owned()
+            )))
+        );
+    }
 }
