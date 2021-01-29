@@ -49,6 +49,10 @@ pub trait Operator: Sized + Copy {
     fn precedence(&self) -> (usize, usize);
 }
 
+pub trait Calculate: Operator {
+    fn apply(&self, _: &[u32]) -> u32;
+}
+
 #[cfg(test)]
 mod test {
     use crate::{
