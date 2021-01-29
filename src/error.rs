@@ -3,12 +3,15 @@ use std::{error, fmt};
 // TODO: kind of a mess- think about where errors should be defined, esp. if making tokens pluggable
 use crate::tokens::Token;
 
-pub struct Reporter<'a> {
-    error: ErrorKind,
+pub struct Reporter<'a, T> {
+    error: ErrorKind<T>,
     input: &'a str,
 }
 
-impl<'a> fmt::Debug for Reporter<'a> {
+impl<'a, T> fmt::Debug for Reporter<'a, T>
+where
+    T: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let offset = match &self.error {
             ErrorKind::LexError(error) => {
@@ -40,46 +43,47 @@ impl<'a> fmt::Debug for Reporter<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ErrorKind {
+pub enum ErrorKind<T> {
     LexError(LexError),
-    ParseError(ParseError),
+    ParseError(ParseError<T>),
 }
 
-impl ErrorKind {
-    pub fn report(self, input: &str) -> Reporter {
+impl<T> ErrorKind<T> {
+    pub fn report(self, input: &str) -> Reporter<T> {
         Reporter { error: self, input }
     }
 }
 
-impl fmt::Display for ErrorKind {
+impl<T> fmt::Display for ErrorKind<T>
+where
+    T: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
-impl error::Error for ErrorKind {}
-
-impl From<LexError> for ErrorKind {
+impl<T> From<LexError> for ErrorKind<T> {
     fn from(error: LexError) -> Self {
         ErrorKind::LexError(error)
     }
 }
 
-impl From<ParseError> for ErrorKind {
-    fn from(error: ParseError) -> Self {
+impl<T> From<ParseError<T>> for ErrorKind<T> {
+    fn from(error: ParseError<T>) -> Self {
         ErrorKind::ParseError(error)
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ParseError {
-    token: Token,
+pub struct ParseError<T> {
+    token: Token<T>,
     offset: usize,
     message: String,
 }
 
-impl ParseError {
-    pub(crate) fn new(token: Token, offset: usize, message: String) -> Self {
+impl<T> ParseError<T> {
+    pub(crate) fn new(token: Token<T>, offset: usize, message: String) -> Self {
         Self {
             token,
             offset,
@@ -88,13 +92,14 @@ impl ParseError {
     }
 }
 
-impl fmt::Display for ParseError {
+impl<T> fmt::Display for ParseError<T>
+where
+    T: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
-
-impl error::Error for ParseError {}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LexError {
@@ -123,32 +128,51 @@ impl fmt::Display for LexError {
 
 impl error::Error for LexError {}
 
-#[test]
-fn test_reporter() {
-    let input = "0 0 0";
+#[cfg(test)]
+mod test {
+    use crate::{
+        error::{ErrorKind, LexError, ParseError},
+        tokens::{Operator, Token},
+    };
 
-    let lex_error = ErrorKind::from(LexError {
-        symbol: '0',
-        offset: 3,
-    });
-    let parse_error = ErrorKind::from(ParseError {
-        token: Token::Value(0),
-        offset: 5,
-        message: "message goes here".to_string(),
-    });
+    #[derive(Debug, Clone, Copy)]
+    struct Op;
+    impl Operator for Op {
+        fn parse(_: &str) -> Option<(&str, Self, usize)> {
+            None
+        }
+        fn precedence(&self) -> (usize, usize) {
+            (0, 0)
+        }
+    }
 
-    assert_eq!(
-        format!("{:?}", lex_error.report(input)),
-        format!(
-            "lex error - unexpected symbol '0' at position 3\n{}\n   ~\n",
-            input
-        )
-    );
-    assert_eq!(
-        format!("{:?}", parse_error.report(input)),
-        format!(
-            "parse error - unexpected token 'Value(0)' at position 5\nmessage goes here\n{}\n     ~\n",
-            input
-        )
-    );
+    #[test]
+    fn test_reporter() {
+        let input = "0 0 0";
+
+        let lex_error: ErrorKind<Op> = ErrorKind::from(LexError {
+            symbol: '0',
+            offset: 3,
+        });
+        let parse_error: ErrorKind<Op> = ErrorKind::from(ParseError {
+            token: Token::Value(0),
+            offset: 5,
+            message: "message goes here".to_string(),
+        });
+
+        assert_eq!(
+            format!("{:?}", lex_error.report(input)),
+            format!(
+                "lex error - unexpected symbol '0' at position 3\n{}\n   ~\n",
+                input
+            )
+        );
+        assert_eq!(
+            format!("{:?}", parse_error.report(input)),
+            format!(
+                "parse error - unexpected token 'Value(0)' at position 5\nmessage goes here\n{}\n     ~\n",
+                input
+            )
+        );
+    }
 }

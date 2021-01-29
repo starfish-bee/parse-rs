@@ -1,14 +1,17 @@
 use crate::error::LexError;
-use crate::tokens::Token;
+use crate::tokens::{Operator, Token};
 use crate::utils::take_while;
 
 // stores both the tokens and their positions for better error reporting
 #[derive(Debug, PartialEq, Eq)]
-pub struct Lexer {
-    pub tokens: Vec<(Token, usize)>,
+pub struct Lexer<T> {
+    pub tokens: Vec<(Token<T>, usize)>,
 }
 
-impl Lexer {
+impl<T> Lexer<T>
+where
+    T: Operator,
+{
     pub(crate) fn lex(input: &str) -> Result<Self, LexError> {
         let mut tokens = Vec::new();
         let mut i = input;
@@ -39,13 +42,13 @@ impl Lexer {
         Ok(Self { tokens })
     }
 
-    pub(crate) fn peek(&self) -> Option<(Token, usize)> {
+    pub(crate) fn peek(&self) -> Option<(Token<T>, usize)> {
         self.tokens.last().copied()
     }
 }
 
-impl Iterator for Lexer {
-    type Item = (Token, usize);
+impl<T> Iterator for Lexer<T> {
+    type Item = (Token<T>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.tokens.pop()
@@ -56,14 +59,46 @@ impl Iterator for Lexer {
 mod test {
     use super::Lexer;
     use crate::error::LexError;
-    use crate::tokens::{Operator::*, Token};
+    use crate::tokens::Token;
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    pub enum Operator {
+        Add,
+        Sub,
+        Mul,
+        Div,
+    }
+
+    impl crate::tokens::Operator for Operator {
+        fn parse(input: &str) -> Option<(&str, Self, usize)> {
+            // unwrap assumes input already checked for empty
+            let op = match input.chars().next().unwrap() {
+                '+' => Self::Add,
+                '-' => Self::Sub,
+                '*' => Self::Mul,
+                '/' => Self::Div,
+                _ => return None,
+            };
+
+            Some((&input[1..], op, 1))
+        }
+
+        fn precedence(&self) -> (usize, usize) {
+            match self {
+                Self::Add | Self::Sub => (1, 2),
+                Self::Mul | Self::Div => (3, 4),
+            }
+        }
+    }
+
+    use Operator::*;
 
     #[test]
     fn test_lex() {
         use Token::*;
 
         assert_eq!(
-            Lexer::lex("1"),
+            Lexer::<Operator>::lex("1"),
             Ok(Lexer {
                 tokens: vec![(Eof, 1), (Value(1), 0)]
             })
@@ -74,27 +109,30 @@ mod test {
                 tokens: vec![(Eof, 6), (Value(16), 4), (Op(Add), 2), (Value(1), 0)]
             })
         );
-        assert_eq!(Lexer::lex("1+16+a"), Err(LexError::new('a').offset(5)));
         assert_eq!(
-            Lexer::lex("(1+16)/3*(450-5/   3)"),
-            Ok(Lexer {
+            Lexer::<Operator>::lex("1+16+a"),
+            Err(LexError::new('a').offset(5))
+        );
+        assert_eq!(
+            Lexer::<Operator>::lex("(1+16)/3*(450-5/   3)"),
+            Ok(Lexer::<Operator> {
                 tokens: vec![
                     (Eof, 21),
-                    (Op(RightParen), 20),
+                    (RightParen, 20),
                     (Value(3), 19),
                     (Op(Div), 15),
                     (Value(5), 14),
                     (Op(Sub), 13),
                     (Value(450), 10),
-                    (Op(LeftParen), 9),
+                    (LeftParen, 9),
                     (Op(Mul), 8),
                     (Value(3), 7),
                     (Op(Div), 6),
-                    (Op(RightParen), 5),
+                    (RightParen, 5),
                     (Value(16), 3),
                     (Op(Add), 2),
                     (Value(1), 1),
-                    (Op(LeftParen), 0),
+                    (LeftParen, 0),
                 ]
             })
         );
