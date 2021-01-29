@@ -5,7 +5,7 @@ pub mod utils;
 
 use error::{ErrorKind, ParseError};
 use lexer::Lexer;
-use tokens::{Operator, Token};
+use tokens::{Calculate, Operator, Token};
 
 pub fn parse<T>(input: &str) -> Result<Tree<T>, ErrorKind<T>>
 where
@@ -65,6 +65,21 @@ where
 pub enum Tree<T> {
     Atom(u32),
     Expr((T, Vec<Tree<T>>)),
+}
+
+impl<T> Tree<T>
+where
+    T: Calculate,
+{
+    pub fn calculate(&self) -> u32 {
+        match self {
+            Self::Atom(x) => *x,
+            Self::Expr((op, vec)) => {
+                let params: Vec<_> = vec.iter().map(|tree| tree.calculate()).collect();
+                op.apply(&params)
+            }
+        }
+    }
 }
 
 impl<T> std::fmt::Debug for Tree<T>
@@ -127,6 +142,17 @@ mod test {
         }
     }
 
+    impl crate::tokens::Calculate for Op {
+        fn apply(&self, params: &[u32]) -> u32 {
+            match self {
+                Self::Add => params[0] + params[1],
+                Self::Sub => params[0] - params[1],
+                Self::Mul => params[0] * params[1],
+                Self::Div => params[0] / params[1],
+            }
+        }
+    }
+
     #[test]
     fn test_fmt() {
         let tree = Tree::Expr((
@@ -141,36 +167,36 @@ mod test {
 
     #[test]
     fn test_parse() {
-        // assert_eq!(format!("{:?}", parse::<Op>("1+1").unwrap()), "Add [1, 1]");
-        // assert_eq!(
-        //     parse::<Op>(""),
-        //     Err(ErrorKind::ParseError(ParseError::new(
-        //         Token::Eof,
-        //         0,
-        //         "expected value".to_owned()
-        //     )))
-        // );
-        // assert_eq!(
-        //     parse::<Op>("1 1"),
-        //     Err(ErrorKind::ParseError(ParseError::new(
-        //         Token::Value(1),
-        //         2,
-        //         "expected operator or eof".to_owned()
-        //     )))
-        // );
-        // assert_eq!(format!("{:?}", parse::<Op>("1").unwrap()), "1");
-        // assert_eq!(
-        //     format!("{:?}", parse::<Op>("1+1+2").unwrap()),
-        //     "Add [Add [1, 1], 2]"
-        // );
-        // assert_eq!(
-        //     format!("{:?}", parse::<Op>("1+1*2").unwrap()),
-        //     "Add [1, Mul [1, 2]]"
-        // );
-        // assert_eq!(
-        //     format!("{:?}", parse::<Op>("1*2+1").unwrap()),
-        //     "Add [Mul [1, 2], 1]"
-        // );
+        assert_eq!(format!("{:?}", parse::<Op>("1+1").unwrap()), "Add [1, 1]");
+        assert_eq!(
+            parse::<Op>(""),
+            Err(ErrorKind::ParseError(ParseError::new(
+                Token::Eof,
+                0,
+                "expected value".to_owned()
+            )))
+        );
+        assert_eq!(
+            parse::<Op>("1 1"),
+            Err(ErrorKind::ParseError(ParseError::new(
+                Token::Value(1),
+                2,
+                "expected operator or eof".to_owned()
+            )))
+        );
+        assert_eq!(format!("{:?}", parse::<Op>("1").unwrap()), "1");
+        assert_eq!(
+            format!("{:?}", parse::<Op>("1+1+2").unwrap()),
+            "Add [Add [1, 1], 2]"
+        );
+        assert_eq!(
+            format!("{:?}", parse::<Op>("1+1*2").unwrap()),
+            "Add [1, Mul [1, 2]]"
+        );
+        assert_eq!(
+            format!("{:?}", parse::<Op>("1*2+1").unwrap()),
+            "Add [Mul [1, 2], 1]"
+        );
         assert_eq!(format!("{:?}", parse::<Op>("(1)").unwrap()), "1");
         assert_eq!(
             format!("{:?}", parse::<Op>("1*(2+1)").unwrap()),
@@ -188,5 +214,12 @@ mod test {
                 "expected ')'".to_owned()
             )))
         );
+    }
+
+    #[test]
+    fn test_calculate() {
+        assert_eq!(parse::<Op>("1 + 1").unwrap().calculate(), 2);
+        assert_eq!(parse::<Op>("3 / 1").unwrap().calculate(), 3);
+        assert_eq!(parse::<Op>("2 * (4 + 6)").unwrap().calculate(), 20);
     }
 }
