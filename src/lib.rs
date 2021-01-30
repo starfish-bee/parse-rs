@@ -1,11 +1,15 @@
-pub mod error;
-pub mod lexer;
-pub mod tokens;
-pub mod utils;
+mod error;
+mod lexer;
+mod test_dep;
+mod tokens;
+mod utils;
 
 use error::{ErrorKind, ParseError};
 use lexer::Lexer;
-use tokens::{Calculate, Operator, Token};
+use tokens::Token;
+
+pub use tokens::Calculate;
+pub use tokens::Operator;
 
 pub fn parse<T>(input: &str) -> Result<Tree<T>, ErrorKind<T>>
 where
@@ -108,50 +112,10 @@ where
 mod test {
     use crate::{
         error::{ErrorKind, ParseError},
+        test_dep::Op,
         tokens::Token,
         {parse, Tree},
     };
-
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-    pub enum Op {
-        Add,
-        Sub,
-        Mul,
-        Div,
-    }
-
-    impl crate::tokens::Operator for Op {
-        fn parse(input: &str) -> Option<(&str, Self, usize)> {
-            // unwrap assumes input already checked for empty
-            let op = match input.chars().next().unwrap() {
-                '+' => Self::Add,
-                '-' => Self::Sub,
-                '*' => Self::Mul,
-                '/' => Self::Div,
-                _ => return None,
-            };
-
-            Some((&input[1..], op, 1))
-        }
-
-        fn precedence(&self) -> (usize, usize) {
-            match self {
-                Self::Add | Self::Sub => (1, 2),
-                Self::Mul | Self::Div => (3, 4),
-            }
-        }
-    }
-
-    impl crate::tokens::Calculate for Op {
-        fn apply(&self, params: &[u32]) -> u32 {
-            match self {
-                Self::Add => params[0] + params[1],
-                Self::Sub => params[0] - params[1],
-                Self::Mul => params[0] * params[1],
-                Self::Div => params[0] / params[1],
-            }
-        }
-    }
 
     #[test]
     fn test_fmt() {

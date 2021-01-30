@@ -59,46 +59,15 @@ impl<T> Iterator for Lexer<T> {
 mod test {
     use super::Lexer;
     use crate::error::LexError;
+    use crate::test_dep::{self, Op::*};
     use crate::tokens::Token;
-
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-    pub enum Operator {
-        Add,
-        Sub,
-        Mul,
-        Div,
-    }
-
-    impl crate::tokens::Operator for Operator {
-        fn parse(input: &str) -> Option<(&str, Self, usize)> {
-            // unwrap assumes input already checked for empty
-            let op = match input.chars().next().unwrap() {
-                '+' => Self::Add,
-                '-' => Self::Sub,
-                '*' => Self::Mul,
-                '/' => Self::Div,
-                _ => return None,
-            };
-
-            Some((&input[1..], op, 1))
-        }
-
-        fn precedence(&self) -> (usize, usize) {
-            match self {
-                Self::Add | Self::Sub => (1, 2),
-                Self::Mul | Self::Div => (3, 4),
-            }
-        }
-    }
-
-    use Operator::*;
 
     #[test]
     fn test_lex() {
         use Token::*;
 
         assert_eq!(
-            Lexer::<Operator>::lex("1"),
+            Lexer::<test_dep::Op>::lex("1"),
             Ok(Lexer {
                 tokens: vec![(Eof, 1), (Value(1), 0)]
             })
@@ -110,12 +79,12 @@ mod test {
             })
         );
         assert_eq!(
-            Lexer::<Operator>::lex("1+16+a"),
+            Lexer::<test_dep::Op>::lex("1+16+a"),
             Err(LexError::new('a').offset(5))
         );
         assert_eq!(
-            Lexer::<Operator>::lex("(1+16)/3*(450-5/   3)"),
-            Ok(Lexer::<Operator> {
+            Lexer::<test_dep::Op>::lex("(1+16)/3*(450-5/   3)"),
+            Ok(Lexer::<test_dep::Op> {
                 tokens: vec![
                     (Eof, 21),
                     (RightParen, 20),
