@@ -8,6 +8,8 @@ use error::{ErrorKind, ParseError};
 use lexer::Lexer;
 use tokens::Token;
 
+#[cfg(feature = "derive")]
+pub use derive_operator::*;
 pub use tokens::Calculate;
 pub use tokens::Operator;
 
@@ -23,7 +25,6 @@ fn parse_impl<T>(tokens: &mut Lexer<T>, prec: usize) -> Result<Tree<T>, ErrorKin
 where
     T: Operator + std::fmt::Debug,
 {
-    println!("{:?}", tokens);
     // unwrap ok as long as Eof always checked for
     let mut lhs = match tokens.next().unwrap() {
         (Token::Value(x), _) => Tree::Atom(x),
