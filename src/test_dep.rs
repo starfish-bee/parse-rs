@@ -1,3 +1,5 @@
+// A simple operator type for use in unit testing throughout the crate
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Op {
     Add,

@@ -1,0 +1,13 @@
+[package]
+name = "derive_operator"
+version = "0.1.0"
+authors = ["starfish-bee"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0.60", features = ['derive'] }
+quote = "1.0.8"
+proc-macro2 = "1.0.24"

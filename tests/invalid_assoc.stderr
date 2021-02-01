@@ -1,0 +1,5 @@
+error: expected 'left' or 'right'
+ --> $DIR/invalid_assoc.rs:5:15
+  |
+5 |     #[assoc = "up"]
+  |               ^^^^
