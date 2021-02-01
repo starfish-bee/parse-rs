@@ -49,7 +49,7 @@ pub trait Operator: Sized + Copy {
     fn precedence(&self) -> (usize, usize);
 }
 
-pub trait Calculate: Operator {
+pub trait Calculate {
     fn apply(&self, _: &[u32]) -> u32;
 }
 

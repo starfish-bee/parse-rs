@@ -31,13 +31,13 @@ impl OperatorDef {
                 Meta::Path(path) => {
                     return Err(Error::new(
                         path.span(),
-                        "expected name-value pair 'ident = 'x''",
+                        "expected name-value pair attribute 'ident = 'x''",
                     ))
                 }
                 Meta::List(list) => {
                     return Err(Error::new(
                         list.span(),
-                        "expected name-value pair 'ident = 'x''",
+                        "expected name-value pair attribute 'ident = 'x''",
                     ))
                 }
                 Meta::NameValue(attr) => {
@@ -154,27 +154,13 @@ fn get_enum(input: DeriveInput) -> Result<(Ident, Vec<Variant>), Error> {
     let ident = input.ident;
     match input.data {
         Data::Enum(en) => Ok((ident, en.variants.into_iter().collect())),
-        Data::Struct(st) => Err(Error::new(st.struct_token.span, "expected 'enum'")),
-        Data::Union(un) => Err(Error::new(un.union_token.span, "expected 'enum'")),
+        Data::Struct(st) => Err(Error::new(
+            st.struct_token.span,
+            "'Operator' derive macro is only valid for 'enum' types",
+        )),
+        Data::Union(un) => Err(Error::new(
+            un.union_token.span,
+            "'Operator' derive macro is only valid for 'enum' types",
+        )),
     }
 }
-
-// #[derive(Debug, Copy, Clone)]
-// enum Test {
-//     A,
-//     B,
-//     C,
-// }
-
-// impl crate::tokens::Operator for Test {
-//     fn parse(inp: &str) -> Option<(&str, Self, usize)> {
-//         let matches = [("hello", Self::A), ("hallo", Self::B), ("heello", Self::C)];
-
-//         matches
-//             .iter()
-//             .find_map(|(op, var)| inp.strip_prefix(op).map(|out| (out, *var, op.len())))
-//     }
-//     fn precedence(&self) -> (usize, usize) {
-//         (0, 0)
-//     }
-// }
