@@ -22,3 +22,5 @@ jobs:
       run: cargo test --verbose --all-features
     - name: Check formatting
       run: cargo fmt -- --check
+    - name: Build docs
+      run: cargo doc --all-features
