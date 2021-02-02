@@ -1,4 +1,105 @@
-mod error;
+//! This is a library that uses Pratt parsing to generates syntax trees from user-defined operators.
+//! It also optionally allows users to define operator behaviour, providing a method to automatically
+//! recurse through the tree and calculate the output.
+//!
+//! Currently this library only allows for infix operators, and will only allow valid u32 values.
+//! When defining operator behaviour, they must act on a vector of u32s, and return a single u32.
+//!
+//! # Using parser
+//! parser provides a trait, [ `Operator` ] , that must be implemented for any type being used as an operator.
+//! Once this trait has been defined, the [ `parse` ] function will generate a [ `Tree` ] object from an input.
+//! If the user additionally implements the optional [ `Calculate` ] trait for their type, the [ `Tree` ] object will
+//! have access to the [ `Tree::calculate` ] method, which will calculate the output of the 'Tree'.
+//!
+//! ```
+//! use parser::*;
+//!
+//! #[derive(Debug, Clone, Copy)]
+//! enum MyOperator {
+//!     Add,
+//!     Sub,
+//!     MysteryOperator,
+//! }
+//!
+//! impl Operator for MyOperator {
+//!     fn parse(input: &str) -> Option<(&str, Self, usize)> {
+//!         input
+//!             .chars()
+//!             .next()
+//!             .map(|ch| {
+//!                 let op = match ch {
+//!                     '^' => Self::Add,
+//!                     '#' => Self::Sub,
+//!                     '?' => Self::MysteryOperator,
+//!                     _ => return None,
+//!                 };
+//!                 Some((&input[1..], op, 1))
+//!             })
+//!             .flatten()
+//!     }
+//!
+//!     fn precedence(&self) -> (usize, usize) {
+//!         match self {
+//!             Self::Add => (6, 5),
+//!             Self::Sub => (2, 1),
+//!             Self::MysteryOperator => (3, 4),
+//!         }
+//!     }
+//! }
+//!
+//! impl Calculate for MyOperator {
+//!     fn apply(&self, args: &[u32]) -> u32 {
+//!         match self {
+//!             Self::Add => args[0] + args[1],
+//!             Self::Sub => args[0] - args[1],
+//!             Self::MysteryOperator => args[0].pow(args[0] + args[1]),
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     let input = "(5 # 8 # 4) ^ 1 ? 1";
+//!     let tree = parse::<MyOperator>(input).unwrap();
+//!     assert_eq!(format!("{:?}", tree), "MysteryOperator [Add [Sub [5, Sub [8, 4]], 1], 1]");
+//!     assert_eq!(tree.calculate(), 8);
+//! }
+//! ```
+//!
+//! # Operator Derive Macro
+//!
+//! This library provides a convenience macro to automatically derive [ `Operator` ] for a type.
+//! To access this macro, the library must be built with the `derive_operator` feature enabled.
+//!
+#[cfg_attr(
+    feature = "derive_operator",
+    doc = r#"
+```
+use parser::*;
+
+#[derive(Debug, Clone, Copy, Operator)]
+enum MyOperator {
+    #[ident = "["]
+    #[assoc = "right"]
+    Sub,
+    #[ident = "mystery!"]
+    #[assoc = "left"]
+    MysteryOperator,
+    #[ident = "add"]
+    #[assoc = "right"]
+    Add,
+}
+
+fn main() {
+    let input = "(5 [ 8 [ 4) add 1 mystery! 1";
+    let tree = parse::<MyOperator>(input).unwrap();
+    assert_eq!(format!("{:?}", tree), "MysteryOperator [Add [Sub [5, Sub [8, 4]], 1], 1]");
+}
+```
+"#
+)]
+
+/// Internal error types, as well as a Reporter struct for nicer error reporting
+pub mod error;
 mod lexer;
 mod test_dep;
 mod tokens;
@@ -6,12 +107,10 @@ mod utils;
 
 use error::{ErrorKind, ParseError};
 use lexer::Lexer;
-use tokens::Token;
 
 #[cfg(feature = "derive")]
 pub use derive_operator::*;
-pub use tokens::Calculate;
-pub use tokens::Operator;
+pub use tokens::{Calculate, Operator, Token};
 
 pub fn parse<T>(input: &str) -> Result<Tree<T>, ErrorKind<T>>
 where

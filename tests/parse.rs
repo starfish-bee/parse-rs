@@ -1,6 +1,6 @@
 use parser::*;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Op {
     Caret,
     Hash,

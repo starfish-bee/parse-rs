@@ -42,7 +42,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorKind<T> {
     LexError(LexError),
     ParseError(ParseError<T>),
@@ -75,7 +75,7 @@ impl<T> From<ParseError<T>> for ErrorKind<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParseError<T> {
     token: Token<T>,
     offset: usize,
@@ -101,7 +101,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct LexError {
     symbol: char,
     offset: usize,

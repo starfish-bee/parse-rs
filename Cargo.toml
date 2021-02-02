@@ -7,8 +7,12 @@ autotests = false
 publish = false
 
 [[test]]
-name = "tests"
-path = "tests/tests.rs"
+name = "parser_tests"
+path = "tests/parser_tests.rs"
+
+[[test]]
+name = "macro_tests"
+path = "tests/macro_tests.rs"
 
 [features]
 derive = ['derive_operator']
