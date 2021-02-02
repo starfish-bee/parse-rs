@@ -2,8 +2,8 @@
 //! It also optionally allows users to define operator behaviour, providing a method to automatically
 //! recurse through the tree and calculate the output.
 //!
-//! Currently this library only allows for infix operators, and will only allow valid u32 values.
-//! When defining operator behaviour, they must act on a vector of u32s, and return a single u32.
+//! Currently this library only allows for infix operators, and will only allow valid `u32` values.
+//! When defining operator behaviour, they must act on a vector of u32s, and return a single `u32`.
 //!
 //! # Using parser
 //! parser provides a trait, [ `Operator` ] , that must be implemented for any type being used as an operator.
@@ -70,7 +70,7 @@
 //! This library provides a convenience macro to automatically derive [ `Operator` ] for a type.
 //! To access this macro, the library must be built with the `derive_operator` feature enabled.
 //!
-#[cfg_attr(
+#![cfg_attr(
     feature = "derive_operator",
     doc = r#"
 ```
@@ -97,7 +97,7 @@ fn main() {
 ```
 "#
 )]
-
+//!
 /// Internal error types, as well as a Reporter struct for nicer error reporting
 pub mod error;
 mod lexer;
