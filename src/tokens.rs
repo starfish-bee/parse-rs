@@ -39,7 +39,60 @@ where
     }
 }
 
+/// Trait that defines operator parsing, associativity and precedence.
+///
+/// # Implementing Operator
+/// The [`Operator::parse`] method should accept a `&str` input and determine whether it begins with a valid operator.
+/// If so, if should return `Some((A, B, C))`, where:
+/// - `A` is the remaining input after the parsed operator
+/// - `B` is the parsed operator
+/// - `C` is the number of bytes of the input consumed
+/// The input does not begin with a valid operator, it should return `None`.
+///
+/// The [`Operator::precedence`] method takes `&self` and returns `(A, B)`. `A` and `B` define the associativity and
+/// precedence of the operator, where `A <= B` implies left-associativity, and `A > B` implies right-associativity.
+/// The lower the values, the lower the precedence of the operator. The following rules should
+/// be adhered to when implementing this function:
+/// - For each operator, the lower value should be odd.
+/// - For each operator, the higher value should be 1 higher than the lower value.
+/// - No two operators should return overlapping values from this function, except in the case that they have
+/// identical precendence and associativity.
+///
+/// If these rules are not followed no guarantee is made of correct or sensible behaviour.
+///
+/// # Example Implementation
+/// This example shows a simple implementation that parses `[` and `]` as operators, where `[` has lower precendence and is
+/// left-associative, and `]` has higher precedence and is right-associative.
+/// ```
+/// use parser::Operator;
+///
+/// #[derive(Clone, Copy)]
+/// enum MyOperator {
+///     A,
+///     B,
+/// }
+///
+/// impl Operator for MyOperator {
+///     fn parse(input: &str) -> Option<(&str, Self, usize)> {
+///         let op = match input.chars().next() {
+///             Some('[') => Some(Self::A),
+///             Some(']') => Some(Self::B),
+///             _ => None,
+///         };
+///         op.map(|op| (&input[1..], op, 1))
+///     }
+///
+///     fn precedence(&self) -> (usize, usize) {
+///         match self {
+///             Self::A => (1, 2),
+///             Self::B => (4, 3),
+///         }
+///     }
+/// }
+/// ```
+
 // TODO: differentiate between prefix, postfix and infix operators
+// TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
 pub trait Operator: Sized + Copy {
     fn parse(input: &str) -> Option<(&str, Self, usize)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
