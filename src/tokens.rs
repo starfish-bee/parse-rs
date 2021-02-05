@@ -102,8 +102,30 @@ pub trait Operator: Sized + Copy {
     fn precedence(&self) -> (usize, usize);
 }
 
+/// Optional trait to define operator behaviour and allow access to the [`calculate`](crate::Tree::calculate) method of [`Tree`](crate::Tree).
+///
+/// # Implementing Calculate
+/// In [`Calculate::apply`], operator arguments are passed in as a slice of `u32`s.
+/// ```
+/// use parser::Calculate;
+///
+/// enum MyOperator {
+///     A,
+///     B,
+/// }
+///
+/// impl Calculate for MyOperator {
+///     fn apply(&self, args: &[u32]) -> u32 {
+///         match self {
+///             Self::A => args[0] + args[1],
+///             Self::B => args[0] * args[0].pow(args[1]),
+///         }
+///     }
+/// }
+/// ```
+
 pub trait Calculate {
-    fn apply(&self, _: &[u32]) -> u32;
+    fn apply(&self, args: &[u32]) -> u32;
 }
 
 #[cfg(test)]
