@@ -1,11 +1,12 @@
 use std::{error, fmt};
 
+#[derive(Debug)]
 pub struct Reporter<'a> {
     error: ErrorKind,
     input: &'a str,
 }
 
-impl<'a> fmt::Debug for Reporter<'a> {
+impl<'a> fmt::Display for Reporter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let offset = match &self.error {
             ErrorKind::LexError(error) => {
@@ -33,6 +34,12 @@ impl<'a> fmt::Debug for Reporter<'a> {
         }
 
         writeln!(f, "~")
+    }
+}
+
+impl<'a> error::Error for Reporter<'a> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        self.error.source()
     }
 }
 
@@ -66,6 +73,15 @@ impl From<ParseError> for ErrorKind {
     }
 }
 
+impl error::Error for ErrorKind {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(match self {
+            Self::LexError(ref error) => error,
+            Self::ParseError(ref error) => error,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParseError {
     token: String,
@@ -88,6 +104,8 @@ impl fmt::Display for ParseError {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
+
+impl error::Error for ParseError {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct LexError {
@@ -149,14 +167,14 @@ mod test {
         });
 
         assert_eq!(
-            format!("{:?}", lex_error.report(input)),
+            format!("{}", lex_error.report(input)),
             format!(
                 "lex error - unexpected symbol '0' at position 3\n{}\n   ~\n",
                 input
             )
         );
         assert_eq!(
-            format!("{:?}", parse_error.report(input)),
+            format!("{}", parse_error.report(input)),
             format!(
                 "parse error - unexpected token '0' at position 5\nmessage goes here\n{}\n     ~\n",
                 input
