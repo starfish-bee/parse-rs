@@ -1,17 +1,11 @@
 use std::{error, fmt};
 
-// TODO: kind of a mess- think about where errors should be defined, esp. if making tokens pluggable
-use crate::tokens::Token;
-
-pub struct Reporter<'a, T> {
-    error: ErrorKind<T>,
+pub struct Reporter<'a> {
+    error: ErrorKind,
     input: &'a str,
 }
 
-impl<'a, T> fmt::Debug for Reporter<'a, T>
-where
-    T: fmt::Debug,
-{
+impl<'a> fmt::Debug for Reporter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let offset = match &self.error {
             ErrorKind::LexError(error) => {
@@ -25,10 +19,10 @@ where
             ErrorKind::ParseError(error) => {
                 writeln!(
                     f,
-                    "parse error - unexpected token '{:?}' at position {}",
+                    "parse error - unexpected token '{}' at position {}",
                     error.token, error.offset
                 )?;
-                writeln!(f, "{}", error.message)?;
+                writeln!(f, "{}", error.context)?;
                 error.offset
             }
         };
@@ -43,59 +37,53 @@ where
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ErrorKind<T> {
+pub enum ErrorKind {
     LexError(LexError),
-    ParseError(ParseError<T>),
+    ParseError(ParseError),
 }
 
-impl<T> ErrorKind<T> {
-    pub fn report(self, input: &str) -> Reporter<T> {
+impl ErrorKind {
+    pub fn report(self, input: &str) -> Reporter {
         Reporter { error: self, input }
     }
 }
 
-impl<T> fmt::Display for ErrorKind<T>
-where
-    T: fmt::Debug,
-{
+impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
-impl<T> From<LexError> for ErrorKind<T> {
+impl From<LexError> for ErrorKind {
     fn from(error: LexError) -> Self {
         ErrorKind::LexError(error)
     }
 }
 
-impl<T> From<ParseError<T>> for ErrorKind<T> {
-    fn from(error: ParseError<T>) -> Self {
+impl From<ParseError> for ErrorKind {
+    fn from(error: ParseError) -> Self {
         ErrorKind::ParseError(error)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ParseError<T> {
-    token: Token<T>,
+pub struct ParseError {
+    token: String,
     offset: usize,
-    message: String,
+    context: String,
 }
 
-impl<T> ParseError<T> {
-    pub(crate) fn new(token: Token<T>, offset: usize, message: String) -> Self {
+impl ParseError {
+    pub(crate) fn new(token: String, offset: usize, context: String) -> Self {
         Self {
             token,
             offset,
-            message,
+            context,
         }
     }
 }
 
-impl<T> fmt::Display for ParseError<T>
-where
-    T: fmt::Debug,
-{
+impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <Self as fmt::Debug>::fmt(self, f)
     }
@@ -150,14 +138,14 @@ mod test {
     fn test_reporter() {
         let input = "0 0 0";
 
-        let lex_error: ErrorKind<Op> = ErrorKind::from(LexError {
+        let lex_error: ErrorKind = ErrorKind::from(LexError {
             symbol: '0',
             offset: 3,
         });
-        let parse_error: ErrorKind<Op> = ErrorKind::from(ParseError {
-            token: Token::Value(0),
+        let parse_error: ErrorKind = ErrorKind::from(ParseError {
+            token: Token::<Op>::Value(0).to_string(),
             offset: 5,
-            message: "message goes here".to_string(),
+            context: "message goes here".to_string(),
         });
 
         assert_eq!(
@@ -170,7 +158,7 @@ mod test {
         assert_eq!(
             format!("{:?}", parse_error.report(input)),
             format!(
-                "parse error - unexpected token 'Value(0)' at position 5\nmessage goes here\n{}\n     ~\n",
+                "parse error - unexpected token '0' at position 5\nmessage goes here\n{}\n     ~\n",
                 input
             )
         );

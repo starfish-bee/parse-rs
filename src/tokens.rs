@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::error::LexError;
 use crate::utils::take_while;
 
@@ -39,6 +41,21 @@ where
     }
 }
 
+impl<T> fmt::Display for Token<T>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Value(val) => write!(f, "{}", val),
+            Self::Op(op) => write!(f, "{:?}", op),
+            Self::LeftParen => write!(f, "("),
+            Self::RightParen => write!(f, ")"),
+            Self::Eof => write!(f, "eof"),
+        }
+    }
+}
+
 /// Trait that defines operator parsing, associativity and precedence.
 ///
 /// # Implementing Operator
@@ -66,7 +83,7 @@ where
 /// ```
 /// use parser::Operator;
 ///
-/// #[derive(Clone, Copy)]
+/// #[derive(Clone, Copy, Debug)]
 /// enum MyOperator {
 ///     A,
 ///     B,
@@ -93,7 +110,7 @@ where
 
 // TODO: differentiate between prefix, postfix and infix operators
 // TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
-pub trait Operator: Sized + Copy {
+pub trait Operator: Sized + Copy + fmt::Debug {
     fn parse(input: &str) -> Option<(&str, Self, usize)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
