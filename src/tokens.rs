@@ -64,7 +64,8 @@ where
 /// - `A` is the remaining input after the parsed operator
 /// - `B` is the parsed operator
 /// - `C` is the number of bytes of the input consumed
-/// The input does not begin with a valid operator, it should return `None`.
+///
+/// If the input does not begin with a valid operator, it should return `None`.
 ///
 /// The [`Operator::precedence`] method takes `&self` and returns `(A, B)`. `A` and `B` define the associativity and
 /// precedence of the operator, where `A <= B` implies left-associativity, and `A > B` implies right-associativity.
@@ -78,8 +79,8 @@ where
 /// If these rules are not followed no guarantee is made of correct or sensible behaviour.
 ///
 /// Optionally, you may also provide an implementation of [`Operator::to_string`]. This method defines how the operator
-/// is represented in [`ParseError`](crate::error::ParseError) in the event that a parse error is triggered by an operator. The default
-/// method always returns "custom operator".
+/// is represented in [`ParseError`](crate::error::ParseError) in the event that an operator is the source of a parsing error.
+/// The default method always returns `"custom operator"`.
 ///
 /// # Example Implementation
 /// This example shows a simple implementation that parses `[` and `]` as operators, where `[` has lower precendence and is

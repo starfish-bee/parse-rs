@@ -301,7 +301,7 @@ mod test {
                 );
                 assert_eq!(
                     format!("{}", e.report(input)),
-                         "parse error - unexpected token \'eof\' at position 6\nexpected \')\'\n(1 + 1\n      ~\n"
+                         "parse error - unexpected token \'eof\' at position 6\nexpected \')\'\n(1 + 1\n      ~"
                 );
             }
         }

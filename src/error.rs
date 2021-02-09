@@ -1,6 +1,46 @@
+//! Contains [`ErrorKind`], the main error type returned by [`parse`](crate::parse), as
+//! well [`Reporter`], a helper type for nicer error reporting.
+
 use std::{error, fmt};
 
-#[derive(Debug)]
+/// A helper type for nicer error formatting. Created by calling [`ErrorKind::report`] or
+/// [`ErrorKind::into_report`].
+///
+/// Displays the position of the token causing the error within the input.
+///
+/// # Example
+/// ```
+/// use parser::{Operator, parse};
+/// #[derive(Clone, Copy)]
+/// struct MyOp;
+///
+/// impl Operator for MyOp {
+///     fn parse(_: &str) -> Option<(&str, Self, usize)> {
+///         None
+///     }
+///     // Function will never be called as MyOp is never parsed
+///     fn precedence(&self) -> (usize, usize) {
+///         (1, 2)
+///     }
+/// }
+/// // Without being defined as an operator, '+' is not a valid character
+/// let input = "1 + 2";
+/// let report = "\
+/// lex error - unexpected symbol '+' at position 2
+/// 1 + 2
+///   ~";
+/// match parse::<MyOp>(input) {
+///     Ok(_) => unreachable!(),
+///     Err(e) => {
+///         assert_eq!(
+///             format!("{}", e.into_report(&input)),
+///             report
+///         )
+///     }
+/// }
+/// ```
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Reporter<'a> {
     pub error: ErrorKind,
     pub input: &'a str,
@@ -33,7 +73,7 @@ impl<'a> fmt::Display for Reporter<'a> {
             write!(f, " ")?;
         }
 
-        writeln!(f, "~")
+        write!(f, "~")
     }
 }
 
@@ -43,6 +83,10 @@ impl<'a> error::Error for Reporter<'a> {
     }
 }
 
+/// The error returned by [`parse`](crate::parse), representing a parsing or lexing error.
+///
+/// Can be converted to a [`Reporter`] for nicer error formatting by using [`ErrorKind::report`],
+/// which clones the `ErrorKing`, or [`ErrorKind::into_report`], which consumes it.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorKind {
     LexError(LexError),
@@ -50,7 +94,14 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub fn report(self, input: &str) -> Reporter {
+    pub fn report<'a>(&self, input: &'a str) -> Reporter<'a> {
+        Reporter {
+            error: self.clone(),
+            input,
+        }
+    }
+
+    pub fn into_report(self, input: &str) -> Reporter {
         Reporter { error: self, input }
     }
 }
@@ -82,6 +133,14 @@ impl error::Error for ErrorKind {
     }
 }
 
+/// An error occuring during the parsing phase.
+///
+/// The token source of the error is represented here as a string. If the token is a custom
+/// operator, the [`to_string`](crate::Operator::to_string) method of the [`Operator`](crate::Operator)
+/// trait is used to generate this representation.
+///
+/// The error also provides the byte offset in the source `&str` of the first character of the token,
+/// as well as additional context.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParseError {
     pub token: String,
@@ -107,6 +166,9 @@ impl fmt::Display for ParseError {
 
 impl error::Error for ParseError {}
 
+/// An error occuring during the lexing phase.
+///
+/// Contains the symbol source of the error, as well as the byte offset of that symbol in the input `&str`.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct LexError {
     pub symbol: char,
@@ -165,21 +227,21 @@ mod test {
         assert_eq!(
             format!("{}", lex_error.report(input)),
             format!(
-                "lex error - unexpected symbol '0' at position 3\n{}\n   ~\n",
+                "lex error - unexpected symbol '0' at position 3\n{}\n   ~",
                 input
             )
         );
         assert_eq!(
             format!("{}", parse_error.report(input)),
             format!(
-                "parse error - unexpected token '0' at position 5\nmessage goes here\n{}\n     ~\n",
+                "parse error - unexpected token '0' at position 5\nmessage goes here\n{}\n     ~",
                 input
             )
         );
         assert_eq!(
             format!("{}", op_error.report(input_2)),
             format!(
-                "parse error - unexpected token '+' at position 5\nmessage goes here\n{}\n     ~\n",
+                "parse error - unexpected token '+' at position 5\nmessage goes here\n{}\n     ~",
                 input_2
             )
         );
