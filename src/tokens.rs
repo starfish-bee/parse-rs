@@ -58,6 +58,7 @@ where
 
 /// Trait that defines operator parsing, associativity and precedence.
 ///
+/// Operators are cloned during lexing, so it is recommended that they implement copy if possible.
 /// # Implementing Operator
 /// The [`Operator::parse`] method should accept a `&str` input and determine whether it begins with a valid operator.
 /// If so, if should return `Some((A, B, C))`, where:
@@ -122,7 +123,7 @@ where
 
 // TODO: differentiate between prefix, postfix and infix operators
 // TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
-pub trait Operator: Sized + Copy {
+pub trait Operator: Sized + Clone {
     fn parse(input: &str) -> Option<(&str, Self, usize)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level

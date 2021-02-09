@@ -43,7 +43,7 @@ where
     }
 
     pub(crate) fn peek(&self) -> Option<(Token<T>, usize)> {
-        self.tokens.last().copied()
+        self.tokens.last().cloned()
     }
 }
 
