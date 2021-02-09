@@ -43,12 +43,12 @@ where
 
 impl<T> fmt::Display for Token<T>
 where
-    T: fmt::Debug,
+    T: Operator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Value(val) => write!(f, "{}", val),
-            Self::Op(op) => write!(f, "{:?}", op),
+            Self::Op(op) => write!(f, "{}", op.to_string()),
             Self::LeftParen => write!(f, "("),
             Self::RightParen => write!(f, ")"),
             Self::Eof => write!(f, "eof"),
@@ -110,13 +110,16 @@ where
 
 // TODO: differentiate between prefix, postfix and infix operators
 // TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
-pub trait Operator: Sized + Copy + fmt::Debug {
+pub trait Operator: Sized + Copy {
     fn parse(input: &str) -> Option<(&str, Self, usize)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
     // of precedence should begin with an odd number.
     // TODO: possible macro generation
     fn precedence(&self) -> (usize, usize);
+    fn to_string(&self) -> String {
+        "custom operator".to_string()
+    }
 }
 
 /// Optional trait to define operator behaviour and allow access to the [`calculate`](crate::Tree::calculate) method of [`Tree`](crate::Tree).
