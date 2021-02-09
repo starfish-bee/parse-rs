@@ -287,14 +287,24 @@ mod test {
             format!("{:?}", parse::<Op>("1*(2+1*(3+4))").unwrap()),
             "Mul [1, Add [2, Mul [1, Add [3, 4]]]]"
         );
-        assert_eq!(
-            parse::<Op>("(1 + 1"),
-            Err(ErrorKind::ParseError(ParseError::new(
-                Token::<Op>::Eof.to_string(),
-                6,
-                "expected ')'".to_owned()
-            )))
-        );
+        let input = "(1 + 1";
+        match parse::<Op>(input) {
+            Ok(_) => panic!("input '{}' should not parse", input),
+            Err(e) => {
+                assert_eq!(
+                    e,
+                    ErrorKind::ParseError(ParseError::new(
+                        Token::<Op>::Eof.to_string(),
+                        6,
+                        "expected ')'".to_owned()
+                    ))
+                );
+                assert_eq!(
+                    format!("{}", e.report(input)),
+                         "parse error - unexpected token \'eof\' at position 6\nexpected \')\'\n(1 + 1\n      ~\n"
+                );
+            }
+        }
     }
 
     #[test]

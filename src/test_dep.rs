@@ -28,6 +28,15 @@ impl crate::tokens::Operator for Op {
             Self::Mul | Self::Div => (3, 4),
         }
     }
+
+    fn to_string(&self) -> String {
+        match self {
+            Self::Add => "+".to_string(),
+            Self::Sub => "-".to_string(),
+            Self::Mul => "*".to_string(),
+            Self::Div => "/".to_string(),
+        }
+    }
 }
 
 impl crate::tokens::Calculate for Op {

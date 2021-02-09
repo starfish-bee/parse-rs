@@ -138,23 +138,14 @@ impl error::Error for LexError {}
 mod test {
     use crate::{
         error::{ErrorKind, LexError, ParseError},
-        tokens::{Operator, Token},
+        test_dep::Op,
+        tokens::Token,
     };
-
-    #[derive(Debug, Clone, Copy)]
-    struct Op;
-    impl Operator for Op {
-        fn parse(_: &str) -> Option<(&str, Self, usize)> {
-            None
-        }
-        fn precedence(&self) -> (usize, usize) {
-            (0, 0)
-        }
-    }
 
     #[test]
     fn test_reporter() {
         let input = "0 0 0";
+        let input_2 = "0 + +";
 
         let lex_error: ErrorKind = ErrorKind::from(LexError {
             symbol: '0',
@@ -162,6 +153,11 @@ mod test {
         });
         let parse_error: ErrorKind = ErrorKind::from(ParseError {
             token: Token::<Op>::Value(0).to_string(),
+            offset: 5,
+            context: "message goes here".to_string(),
+        });
+        let op_error: ErrorKind = ErrorKind::from(ParseError {
+            token: Token::<Op>::Op(Op::Add).to_string(),
             offset: 5,
             context: "message goes here".to_string(),
         });
@@ -178,6 +174,13 @@ mod test {
             format!(
                 "parse error - unexpected token '0' at position 5\nmessage goes here\n{}\n     ~\n",
                 input
+            )
+        );
+        assert_eq!(
+            format!("{}", op_error.report(input_2)),
+            format!(
+                "parse error - unexpected token '+' at position 5\nmessage goes here\n{}\n     ~\n",
+                input_2
             )
         );
     }
