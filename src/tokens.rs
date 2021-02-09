@@ -77,6 +77,10 @@ where
 ///
 /// If these rules are not followed no guarantee is made of correct or sensible behaviour.
 ///
+/// Optionally, you may also provide an implementation of [`Operator::to_string`]. This method defines how the operator
+/// is represented in [`ParseError`](crate::error::ParseError) in the event that a parse error is triggered by an operator. The default
+/// method always returns "custom operator".
+///
 /// # Example Implementation
 /// This example shows a simple implementation that parses `[` and `]` as operators, where `[` has lower precendence and is
 /// left-associative, and `]` has higher precedence and is right-associative.
@@ -105,6 +109,13 @@ where
 ///             Self::B => (4, 3),
 ///         }
 ///     }
+///
+///     fn to_string(&self) -> String {
+///         match self {
+///             Self::A => "[".to_string(),
+///             Self::B => "]".to_string(),
+///         }
+///     }
 /// }
 /// ```
 
@@ -117,6 +128,7 @@ pub trait Operator: Sized + Copy {
     // of precedence should begin with an odd number.
     // TODO: possible macro generation
     fn precedence(&self) -> (usize, usize);
+    // method used by parser::parse to fill the token field in error::ParseError when parsing errors occur
     fn to_string(&self) -> String {
         "custom operator".to_string()
     }

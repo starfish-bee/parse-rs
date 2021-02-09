@@ -2,8 +2,8 @@ use std::{error, fmt};
 
 #[derive(Debug)]
 pub struct Reporter<'a> {
-    error: ErrorKind,
-    input: &'a str,
+    pub error: ErrorKind,
+    pub input: &'a str,
 }
 
 impl<'a> fmt::Display for Reporter<'a> {
@@ -84,9 +84,9 @@ impl error::Error for ErrorKind {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ParseError {
-    token: String,
-    offset: usize,
-    context: String,
+    pub token: String,
+    pub offset: usize,
+    pub context: String,
 }
 
 impl ParseError {
@@ -109,8 +109,8 @@ impl error::Error for ParseError {}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct LexError {
-    symbol: char,
-    offset: usize,
+    pub symbol: char,
+    pub offset: usize,
 }
 
 impl LexError {
