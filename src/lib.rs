@@ -111,7 +111,45 @@ pub use tokens::{Calculate, Operator};
 #[cfg(feature = "derive")]
 /// A derive macro that implements [`Operator`] for a user-defined `Enum`.
 ///
-/// More.
+/// To use this macro enable the "derive" feature.
+///
+/// # Using The [`Operator`] Derive Macro
+///
+/// This macro will implement [`Operator`] such that each `Enum` field is a separate operator, with the order of
+/// precedence being equal to the order of fields. There two associated attributes, `ident` and `assoc`. The `ident`
+/// attribute must be provided for each field, and contains the `&str` that should be parsed as that field. The
+/// optional `assoc` attribute can be either "`"left"` or `"right"`, defining the associativity of the field. If
+/// no `assoc` attribute is provided, the field will be left-associative by default.
+///
+/// This macro does not currently provide an implementation of the [`Operator::to_string`] method.
+///
+/// # Example
+/// ```
+/// use parser::{parse, Operator};
+///
+/// #[derive(Operator, Debug, Copy, Clone)]
+/// enum MyOp {
+///     #[ident = "+"]
+///     #[assoc = "left"]
+///     Add,
+///     #[ident = "-"]
+///     Sub,
+///     #[ident = "/"]
+///     #[assoc = "right"]
+///     Div
+/// }
+///
+/// let input_1 = "8 / 4 / 2";
+/// let input_2 = "2 - 1 + 1 + 2";
+/// assert_eq!(
+///     format!("{:?}", parse::<MyOp>(input_1).unwrap()),
+///     "Div [8, Div [4, 2]]"
+/// );
+/// assert_eq!(
+///     format!("{:?}", parse::<MyOp>(input_2).unwrap()),
+///     "Add [Add [Sub [2, 1], 1], 2]"
+/// );
+/// ```
 pub use derive_operator::Operator;
 
 /// Function that takes an input `&str` and parses it as a [`Tree<T>`], where `T` is a user-defined
