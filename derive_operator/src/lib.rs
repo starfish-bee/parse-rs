@@ -33,6 +33,15 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
         quote!((#ident, Self::#field))
     });
 
+    // the string representation is the same as the str used to parse the operator
+    let string_repr = defs.iter().map(|def| {
+        let ident = &def.ident;
+        let field = &def.field;
+        quote!(Self::#field => #ident.to_string())
+    });
+
+    // precedence starts at 1, is always odd, and increases with field order
+    // associtivity is indicated by whether the left of right value has +1
     let prec = defs.iter().enumerate().map(|(i, def)| {
         let field = &def.field;
         let base = 2 * i + 1;
@@ -59,11 +68,17 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
                     #(#prec),*
                 }
             }
+            fn to_string(&self) -> String {
+                match self {
+                    #(#string_repr),*
+                }
+            }
         }
     };
     Ok(TokenStream::from(toks))
 }
 
+// macro is only valid for enums
 fn get_enum(input: DeriveInput) -> Result<(Ident, Vec<Variant>), Error> {
     let ident = input.ident;
     match input.data {
@@ -79,6 +94,7 @@ fn get_enum(input: DeriveInput) -> Result<(Ident, Vec<Variant>), Error> {
     }
 }
 
+// for each field, extract the field name, ident to be used for parsing, and operator associativity
 struct OperatorDef {
     field: Ident,
     ident: LitStr,
@@ -96,10 +112,12 @@ impl OperatorDef {
         let mut assoc: Option<Assoc> = None;
         for attr in var.attrs.iter() {
             let meta = attr.parse_meta();
+            // using if let pattern to reduce nesting
             if let Err(e) = meta {
                 return Err(e);
             }
 
+            // a name-value pair attribute is currently the only type supported
             match attr.parse_meta()? {
                 Meta::Path(path) => {
                     return Err(Error::new(
@@ -143,6 +161,7 @@ impl OperatorDef {
             }
         }
 
+        // ident value not being set here imples no ident attribute was present
         let ident = match ident {
             Some(i) => i,
             None => {
@@ -152,6 +171,7 @@ impl OperatorDef {
                 ))
             }
         };
+        // assoc attribute is optional- default behaviour is left-associativity
         let assoc = match assoc {
             Some(a) => a,
             None => Assoc::Left,

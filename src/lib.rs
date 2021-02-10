@@ -113,7 +113,7 @@ pub use tokens::{Calculate, Operator};
 ///
 /// To use this macro enable the "derive" feature.
 ///
-/// # Using The [`Operator`] Derive Macro
+/// # Using The `Operator` Derive Macro
 ///
 /// This macro will implement [`Operator`] such that each `Enum` field is a separate operator, with the order of
 /// precedence being equal to the order of fields. There two associated attributes, `ident` and `assoc`. The `ident`
@@ -121,7 +121,8 @@ pub use tokens::{Calculate, Operator};
 /// optional `assoc` attribute can be either "`"left"` or `"right"`, defining the associativity of the field. If
 /// no `assoc` attribute is provided, the field will be left-associative by default.
 ///
-/// This macro does not currently provide an implementation of the [`Operator::to_string`] method.
+/// This macro will use the `ident` attribute value as the string representation of each operator field
+/// (see [`ParseError`](crate::error::ParseError))
 ///
 /// # Example
 /// ```
@@ -148,6 +149,10 @@ pub use tokens::{Calculate, Operator};
 /// assert_eq!(
 ///     format!("{:?}", parse::<MyOp>(input_2).unwrap()),
 ///     "Add [Add [Sub [2, 1], 1], 2]"
+/// );
+/// assert_eq!(
+///     <MyOp as Operator>::to_string(&MyOp::Add),
+///     "+"
 /// );
 /// ```
 pub use derive_operator::Operator;
