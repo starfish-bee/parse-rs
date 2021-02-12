@@ -24,6 +24,7 @@ where
         } else {
             // unwrap ok as already tested if input is empty
             match input.chars().next().unwrap() {
+                // slice okay as '(', ')' both 1 byte long => always valid character boundary
                 '(' => Ok((&input[1..], Self::LeftParen)),
                 ')' => Ok((&input[1..], Self::RightParen)),
                 x if x.is_numeric() => {
@@ -64,7 +65,7 @@ where
 /// - `A` is the remaining input after the parsed operator
 /// - `B` is the parsed operator
 ///
-/// If the input does not begin with a valid operator, it should return `None`.
+/// If the input does not begin with a valid operator, it should return `None`. The input will never be empty.
 ///
 /// The [`Operator::precedence`] method takes `&self` and returns `(A, B)`. `A` and `B` define the associativity and
 /// precedence of the operator, where `A <= B` implies left-associativity, and `A > B` implies right-associativity.

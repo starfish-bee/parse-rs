@@ -10,7 +10,7 @@ pub enum Op {
 
 impl crate::tokens::Operator for Op {
     fn parse(input: &str) -> Option<(&str, Self)> {
-        // unwrap assumes input already checked for empty
+        // unwrap okay as this will never be passed an empty input
         let op = match input.chars().next().unwrap() {
             '+' => Self::Add,
             '-' => Self::Sub,

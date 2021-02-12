@@ -8,6 +8,7 @@ where
         None => input.chars().count(),
     };
 
+    // slice okay as index is guaranteed to be a valid character boundary
     (&input[index..], &input[..index])
 }
 

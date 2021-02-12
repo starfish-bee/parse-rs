@@ -41,6 +41,7 @@ where
         self.tokens.last().cloned()
     }
 
+    // safety checks can be avoided as value is never used in pointer calculations
     fn get_offset(origin: &str, new: &str) -> usize {
         let origin = origin.as_ptr() as usize;
         let new = new.as_ptr() as usize;

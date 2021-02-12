@@ -174,7 +174,7 @@ fn parse_impl<T>(tokens: &mut Lexer<T>, prec: usize) -> Result<Tree<T>, ErrorKin
 where
     T: Operator,
 {
-    // unwrap ok as long as Eof always checked for
+    // unwrap ok as Eof is always checked for
     let mut lhs = match tokens.next().unwrap() {
         (Token::Value(x), _) => Tree::Atom(x),
         (Token::LeftParen, _) => {
@@ -196,7 +196,7 @@ where
     };
 
     loop {
-        // unwrap ok as long as Eof always checked for
+        // unwrap ok as Eof is always checked for
         let op = match tokens.peek().unwrap() {
             (Token::Eof, _) | (Token::RightParen, _) => break,
             (Token::Op(x), _) => x,
