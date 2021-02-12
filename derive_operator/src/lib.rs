@@ -56,12 +56,12 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
 
     let toks = quote! {
         impl parser::Operator for #ident {
-            fn parse(inp: &str) -> Option<(&str, Self, usize)> {
+            fn parse(inp: &str) -> Option<(&str, Self)> {
                 let matches = [#(#name_var),*];
 
                 matches
                     .iter()
-                    .find_map(|(op, var)| inp.strip_prefix(op).map(|out| (out, *var, op.len())))
+                    .find_map(|(op, var)| inp.strip_prefix(op).map(|out| (out, *var)))
             }
             fn precedence(&self) -> (usize, usize) {
                 match self {

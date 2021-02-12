@@ -60,10 +60,9 @@ where
 /// Operators are cloned during lexing, so it is recommended that they implement copy if possible.
 /// # Implementing Operator
 /// The [`Operator::parse`] method should accept a `&str` input and determine whether it begins with a valid operator.
-/// If so, if should return `Some((A, B, C))`, where:
+/// If so, if should return `Some((A, B))`, where:
 /// - `A` is the remaining input after the parsed operator
 /// - `B` is the parsed operator
-/// - `C` is the number of bytes of the input consumed
 ///
 /// If the input does not begin with a valid operator, it should return `None`.
 ///

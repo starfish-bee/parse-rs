@@ -13,7 +13,7 @@ where
 
 #[test]
 fn test_take_while() {
-    assert_eq!(take_while("abc", char::is_alphabetic), ("", "abc"));
+    assert_eq!(take_while("ab老 ", char::is_alphabetic), (" ", "ab老"));
     assert_eq!(take_while(" abc", char::is_alphabetic), (" abc", ""));
     assert_eq!(take_while(" abc", char::is_whitespace), ("abc", " "));
 }
