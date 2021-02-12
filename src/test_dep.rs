@@ -9,7 +9,7 @@ pub enum Op {
 }
 
 impl crate::tokens::Operator for Op {
-    fn parse(input: &str) -> Option<(&str, Self, usize)> {
+    fn parse(input: &str) -> Option<(&str, Self)> {
         // unwrap assumes input already checked for empty
         let op = match input.chars().next().unwrap() {
             '+' => Self::Add,
@@ -19,7 +19,7 @@ impl crate::tokens::Operator for Op {
             _ => return None,
         };
 
-        Some((&input[1..], op, 1))
+        Some((&input[1..], op))
     }
 
     fn precedence(&self) -> (usize, usize) {

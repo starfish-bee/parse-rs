@@ -18,23 +18,22 @@ impl<T> Token<T>
 where
     T: Operator,
 {
-    pub(crate) fn parse(input: &str) -> Result<(&str, Self, usize), LexError> {
+    pub(crate) fn parse(input: &str) -> Result<(&str, Self), LexError> {
         if input.is_empty() {
-            Ok((input, Self::Eof, 0))
+            Ok((input, Self::Eof))
         } else {
             // unwrap ok as already tested if input is empty
             match input.chars().next().unwrap() {
-                '(' => Ok((&input[1..], Self::LeftParen, 1)),
-                ')' => Ok((&input[1..], Self::RightParen, 1)),
+                '(' => Ok((&input[1..], Self::LeftParen)),
+                ')' => Ok((&input[1..], Self::RightParen)),
                 x if x.is_numeric() => {
-                    let (input, val, off) = take_while(input, char::is_numeric);
+                    let (input, val) = take_while(input, char::is_numeric);
                     // unwrap ok as val is guaranteed to be a string of numbers
-                    Ok((input, Self::Value(val.parse().unwrap()), off))
+                    Ok((input, Self::Value(val.parse().unwrap())))
                 }
                 x => {
-                    let (input, op, off) =
-                        Operator::parse(input).ok_or_else(|| LexError::new(x))?;
-                    Ok((input, Self::Op(op), off))
+                    let (input, op) = Operator::parse(input).ok_or_else(|| LexError::new(x))?;
+                    Ok((input, Self::Op(op)))
                 }
             }
         }
@@ -96,13 +95,13 @@ where
 /// }
 ///
 /// impl Operator for MyOperator {
-///     fn parse(input: &str) -> Option<(&str, Self, usize)> {
+///     fn parse(input: &str) -> Option<(&str, Self)> {
 ///         let op = match input.chars().next() {
 ///             Some('[') => Some(Self::A),
 ///             Some(']') => Some(Self::B),
 ///             _ => None,
 ///         };
-///         op.map(|op| (&input[1..], op, 1))
+///         op.map(|op| (&input[1..], op))
 ///     }
 ///
 ///     fn precedence(&self) -> (usize, usize) {
@@ -124,7 +123,7 @@ where
 // TODO: differentiate between prefix, postfix and infix operators
 // TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
 pub trait Operator: Sized + Clone {
-    fn parse(input: &str) -> Option<(&str, Self, usize)>;
+    fn parse(input: &str) -> Option<(&str, Self)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
     // of precedence should begin with an odd number.
@@ -173,21 +172,21 @@ mod test {
     #[test]
     fn test_op_parse() {
         assert_eq!(Op::parse("a"), None);
-        assert_eq!(Op::parse("/123"), Some(("123", Op::Div, 1)));
+        assert_eq!(Op::parse("/123"), Some(("123", Op::Div)));
     }
 
     #[test]
     fn test_token_parse() {
-        assert_eq!(Token::<Op>::parse(""), Ok(("", Token::Eof, 0)));
+        assert_eq!(Token::<Op>::parse(""), Ok(("", Token::Eof)));
         assert_eq!(Token::<Op>::parse("a"), Err(LexError::new('a')));
-        assert_eq!(Token::<Op>::parse("1"), Ok(("", Token::Value(1), 1)));
+        assert_eq!(Token::<Op>::parse("1"), Ok(("", Token::Value(1))));
         assert_eq!(
             Token::<Op>::parse("123abc4"),
-            Ok(("abc4", Token::Value(123), 3))
+            Ok(("abc4", Token::Value(123)))
         );
         assert_eq!(
             Token::<Op>::parse("+qwerty"),
-            Ok(("qwerty", Token::Op(Op::Add), 1))
+            Ok(("qwerty", Token::Op(Op::Add)))
         );
     }
 }

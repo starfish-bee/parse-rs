@@ -8,7 +8,7 @@ enum Op {
 }
 
 impl Operator for Op {
-    fn parse(input: &str) -> Option<(&str, Self, usize)> {
+    fn parse(input: &str) -> Option<(&str, Self)> {
         input
             .chars()
             .next()
@@ -19,7 +19,7 @@ impl Operator for Op {
                     '?' => Self::QMark,
                     _ => return None,
                 };
-                Some((&input[1..], op, 1))
+                Some((&input[1..], op))
             })
             .flatten()
     }

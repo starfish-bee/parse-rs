@@ -15,7 +15,8 @@ use std::{error, fmt};
 /// struct MyOp;
 ///
 /// impl Operator for MyOp {
-///     fn parse(_: &str) -> Option<(&str, Self, usize)> {
+///     // MyOp has no valid input
+///     fn parse(_: &str) -> Option<(&str, Self)> {
 ///         None
 ///     }
 ///     // Function will never be called as MyOp is never parsed
@@ -46,6 +47,16 @@ pub struct Reporter<'a> {
     pub input: &'a str,
 }
 
+// Reporter displays in the following way:
+// line 1: a message explaining the error source and position in input
+// line 2: a message giving additional context, if parsing error
+// line 3: the original input
+// line 4: a tilde '~' highlighting the position of the error
+// e.g.
+// parse error - unexpected token `+` at position 4
+// expected value
+// 1 + + 3
+//     ~
 impl<'a> fmt::Display for Reporter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let offset = match &self.error {

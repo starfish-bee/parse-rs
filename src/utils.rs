@@ -1,5 +1,5 @@
 // helper function for consuming whitespace and multi-character tokens
-pub fn take_while<P>(input: &str, predicate: P) -> (&str, &str, usize)
+pub fn take_while<P>(input: &str, predicate: P) -> (&str, &str)
 where
     P: Fn(char) -> bool,
 {
@@ -8,12 +8,12 @@ where
         None => input.chars().count(),
     };
 
-    (&input[index..], &input[..index], index)
+    (&input[index..], &input[..index])
 }
 
 #[test]
 fn test_take_while() {
-    assert_eq!(take_while("abc", char::is_alphabetic), ("", "abc", 3));
-    assert_eq!(take_while(" abc", char::is_alphabetic), (" abc", "", 0));
-    assert_eq!(take_while(" abc", char::is_whitespace), ("abc", " ", 1));
+    assert_eq!(take_while("abc", char::is_alphabetic), ("", "abc"));
+    assert_eq!(take_while(" abc", char::is_alphabetic), (" abc", ""));
+    assert_eq!(take_while(" abc", char::is_whitespace), ("abc", " "));
 }

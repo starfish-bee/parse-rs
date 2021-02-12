@@ -23,7 +23,7 @@
 //! }
 //!
 //! impl Operator for MyOperator {
-//!     fn parse(input: &str) -> Option<(&str, Self, usize)> {
+//!     fn parse(input: &str) -> Option<(&str, Self)> {
 //!         input
 //!             .chars()
 //!             .next()
@@ -34,7 +34,7 @@
 //!                     '?' => Self::MysteryOperator,
 //!                     _ => return None,
 //!                 };
-//!                 Some((&input[1..], op, 1))
+//!                 Some((&input[1..], op))
 //!             })
 //!             .flatten()
 //!     }

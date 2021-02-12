@@ -15,24 +15,19 @@ where
     pub(crate) fn lex(input: &str) -> Result<Self, LexError> {
         let mut tokens = Vec::new();
         let mut i = input;
-        let mut offset = 0;
         loop {
             // whitespace is ignored but the offset is retained for error reporting. i_temp is used
             // as i must be retained between loops, and let binding would shadow it and cause it to be dropped
             // after each iteration
-            let (i_temp, _, off) = take_while(i, char::is_whitespace);
-            offset += off;
-            let (i_temp, token, off) =
-                Token::parse(i_temp).map_err(|e| LexError::offset(e, offset))?;
-
+            let (i_temp, _) = take_while(i, char::is_whitespace);
+            let offset = Self::get_offset(input, i_temp);
+            let (i_temp, token) = Token::parse(i_temp).map_err(|e| LexError::offset(e, offset))?;
             if let Token::Eof = token {
                 tokens.push((token, offset));
                 break;
             } else {
                 tokens.push((token, offset));
             }
-
-            offset += off;
             i = i_temp;
         }
 
@@ -44,6 +39,12 @@ where
 
     pub(crate) fn peek(&self) -> Option<(Token<T>, usize)> {
         self.tokens.last().cloned()
+    }
+
+    fn get_offset(origin: &str, new: &str) -> usize {
+        let origin = origin.as_ptr() as usize;
+        let new = new.as_ptr() as usize;
+        new - origin
     }
 }
 
