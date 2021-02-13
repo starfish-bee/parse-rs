@@ -3,12 +3,10 @@ pub fn take_while<P>(input: &str, predicate: P) -> (&str, &str)
 where
     P: Fn(char) -> bool,
 {
-    input.chars().for_each(|x| println!("{}", x));
     let index = match input.char_indices().find(|&(_, x)| !predicate(x)) {
         Some((i, _)) => i,
         None => input.len(),
     };
-    println!("{}", index);
 
     // slice okay as index is guaranteed to be a valid character boundary
     (&input[index..], &input[..index])
