@@ -128,7 +128,15 @@ pub trait Operator: Sized + Clone {
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
     // of precedence should begin with an odd number.
     // TODO: possible macro generation
-    fn precedence(&self) -> (usize, usize);
+    fn infix_precedence(&self) -> Option<(usize, usize)> {
+        None
+    }
+    fn prefix_precedence(&self) -> Option<usize> {
+        None
+    }
+    fn postfix_precedence(&self) -> Option<usize> {
+        None
+    }
     // method used by parser::parse to fill the token field in error::ParseError when parsing errors occur
     fn to_string(&self) -> String {
         "custom operator".to_string()

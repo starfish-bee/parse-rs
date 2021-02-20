@@ -190,8 +190,26 @@ where
                 }
             }
         }
+        (Token::Op(op), i) => {
+            if let Some(prec) = op.prefix_precedence() {
+                let expr = parse_impl(tokens, prec)?;
+                Tree::Expr((op, vec![expr]))
+            } else {
+                return Err(ParseError::new(
+                    op.to_string(),
+                    i,
+                    "expected value or prefix operator".to_owned(),
+                )
+                .into());
+            }
+        }
         (token, i) => {
-            return Err(ParseError::new(token.to_string(), i, "expected value".to_owned()).into())
+            return Err(ParseError::new(
+                token.to_string(),
+                i,
+                "expected value or prefix operator".to_owned(),
+            )
+            .into())
         }
     };
 
@@ -210,13 +228,24 @@ where
             }
         };
 
-        let (l_prec, r_prec) = op.precedence();
-        if l_prec <= prec {
-            break;
+        if let Some((l_prec, r_prec)) = op.infix_precedence() {
+            if l_prec <= prec {
+                break;
+            }
+            tokens.next();
+            lhs = Tree::Expr((op, vec![lhs, parse_impl(tokens, r_prec)?]));
+        } else if let Some(l_prec) = op.postfix_precedence() {
+            if l_prec <= prec {
+                break;
+            }
+            tokens.next();
+            lhs = Tree::Expr((op, vec![lhs]));
+        } else {
+            panic!(format!(
+                "no precedence definition for operator {}",
+                op.to_string()
+            ));
         }
-
-        tokens.next();
-        lhs = Tree::Expr((op, vec![lhs, parse_impl(tokens, r_prec)?]));
     }
 
     Ok(lhs)
@@ -297,7 +326,7 @@ mod test {
             Err(ErrorKind::ParseError(ParseError::new(
                 Token::<Op>::Eof.to_string(),
                 0,
-                "expected value".to_owned()
+                "expected value or prefix operator".to_owned()
             )))
         );
         assert_eq!(
@@ -308,7 +337,17 @@ mod test {
                 "expected operator or eof".to_owned()
             )))
         );
+        assert_eq!(
+            parse::<Op>("-1"),
+            Err(ErrorKind::ParseError(ParseError::new(
+                Token::<Op>::Op(Op::Sub).to_string(),
+                0,
+                "expected value or prefix operator".to_owned()
+            )))
+        );
         assert_eq!(format!("{:?}", parse::<Op>("1").unwrap()), "1");
+        assert_eq!(format!("{:?}", parse::<Op>("*1").unwrap()), "Mul [1]");
+        assert_eq!(format!("{:?}", parse::<Op>("1!").unwrap()), "Fact [1]");
         assert_eq!(
             format!("{:?}", parse::<Op>("1+1+2").unwrap()),
             "Add [Add [1, 1], 2]"
@@ -329,6 +368,10 @@ mod test {
         assert_eq!(
             format!("{:?}", parse::<Op>("1*(2+1*(3+4))").unwrap()),
             "Mul [1, Add [2, Mul [1, Add [3, 4]]]]"
+        );
+        assert_eq!(
+            format!("{:?}", parse::<Op>("*1*3!").unwrap()),
+            "Mul [Mul [1], Fact [3]]"
         );
         let input = "(1 + 1";
         match parse::<Op>(input) {
@@ -355,5 +398,6 @@ mod test {
         assert_eq!(parse::<Op>("1 + 1").unwrap().calculate(), 2);
         assert_eq!(parse::<Op>("3 / 1").unwrap().calculate(), 3);
         assert_eq!(parse::<Op>("2 * (4 + 6)").unwrap().calculate(), 20);
+        assert_eq!(parse::<Op>("*1*3!").unwrap().calculate(), 12);
     }
 }

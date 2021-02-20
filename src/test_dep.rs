@@ -6,6 +6,7 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    Fact,
 }
 
 impl crate::tokens::Operator for Op {
@@ -16,16 +17,34 @@ impl crate::tokens::Operator for Op {
             '-' => Self::Sub,
             '*' => Self::Mul,
             '/' => Self::Div,
+            '!' => Self::Fact,
             _ => return None,
         };
 
         Some((&input[1..], op))
     }
 
-    fn precedence(&self) -> (usize, usize) {
+    fn infix_precedence(&self) -> Option<(usize, usize)> {
         match self {
-            Self::Add | Self::Sub => (1, 2),
-            Self::Mul | Self::Div => (3, 4),
+            Self::Add | Self::Sub => Some((1, 2)),
+            Self::Mul | Self::Div => Some((3, 4)),
+            _ => None,
+        }
+    }
+
+    fn prefix_precedence(&self) -> Option<usize> {
+        if let Self::Mul = self {
+            Some(5)
+        } else {
+            None
+        }
+    }
+
+    fn postfix_precedence(&self) -> Option<usize> {
+        if let Self::Fact = self {
+            Some(7)
+        } else {
+            None
         }
     }
 
@@ -35,6 +54,7 @@ impl crate::tokens::Operator for Op {
             Self::Sub => "-".to_string(),
             Self::Mul => "*".to_string(),
             Self::Div => "/".to_string(),
+            Self::Fact => "!".to_string(),
         }
     }
 }
@@ -44,8 +64,21 @@ impl crate::tokens::Calculate for Op {
         match self {
             Self::Add => params[0] + params[1],
             Self::Sub => params[0] - params[1],
-            Self::Mul => params[0] * params[1],
+            Self::Mul => {
+                if params.len() == 1 {
+                    2 * params[0]
+                } else {
+                    params[0] * params[1]
+                }
+            }
             Self::Div => params[0] / params[1],
+            Self::Fact => {
+                if params[0] > 1 {
+                    params[0] * (params[0] - 1)
+                } else {
+                    1
+                }
+            }
         }
     }
 }

@@ -24,11 +24,11 @@ impl Operator for Op {
             .flatten()
     }
 
-    fn precedence(&self) -> (usize, usize) {
+    fn infix_precedence(&self) -> Option<(usize, usize)> {
         match self {
-            Self::Caret => (4, 3),
-            Self::Hash => (2, 1),
-            Self::QMark => (5, 6),
+            Self::Caret => Some((4, 3)),
+            Self::Hash => Some((2, 1)),
+            Self::QMark => Some((5, 6)),
         }
     }
 }
