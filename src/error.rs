@@ -16,12 +16,9 @@ use std::{error, fmt};
 ///
 /// impl Operator for MyOp {
 ///     // MyOp has no valid input
+///     // As MyOp is never parsed, precedence methods never called, therefore no need to define them
 ///     fn parse(_: &str) -> Option<(&str, Self)> {
 ///         None
-///     }
-///     // Function will never be called as MyOp is never parsed
-///     fn precedence(&self) -> (usize, usize) {
-///         (1, 2)
 ///     }
 /// }
 /// // Without being defined as an operator, '+' is not a valid character

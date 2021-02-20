@@ -3,7 +3,7 @@ use std::fmt;
 use crate::error::LexError;
 use crate::utils::take_while;
 
-// currently, valid tokens include operators (see crate::operators) and valid u32 strings only
+// currently, valid tokens include operators (see Operator trait) valid u32 strings and parenthesis only
 // TODO: expand range of valid values
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token<T> {
@@ -67,7 +67,12 @@ where
 ///
 /// If the input does not begin with a valid operator, it should return `None`. The input will never be empty.
 ///
-/// The [`Operator::precedence`] method takes `&self` and returns `(A, B)`. `A` and `B` define the associativity and
+/// At least one precedence method should be implemented. These define operator precedence and (for infix operators)
+/// associativity. All methods return an [`Option`], where `None` indicates the operator is not of the appropriate class
+/// (e.g. an operator returning `None` for [`Operator::infix_precedence`] indicates it is not an infix operator). If
+/// an operator has both a postfix and infix definition, it will always be parsed as an infix operator.
+///
+/// The [`Operator::infix_precedence`] method takes `&self` and returns `(A, B)`. `A` and `B` define the associativity and
 /// precedence of the operator, where `A <= B` implies left-associativity, and `A > B` implies right-associativity.
 /// The lower the values, the lower the precedence of the operator. The following rules should
 /// be adhered to when implementing this function:
@@ -77,6 +82,10 @@ where
 /// identical precendence and associativity.
 ///
 /// If these rules are not followed no guarantee is made of correct or sensible behaviour.
+///
+/// [`Operator::prefix_precedence`] and [`Operator::postfix_precedence`] both take `&self` and return `A`, where `A` defines
+/// the precedence of the operator. The lower the value, the lower the precedence of the operator. The return value should be odd,
+/// as with [`Operator::infix_precedence`].
 ///
 /// Optionally, you may also provide an implementation of [`Operator::to_string`]. This method defines how the operator
 /// is represented in [`ParseError`](crate::error::ParseError) in the event that an operator is the source of a parsing error.
@@ -88,10 +97,12 @@ where
 /// ```
 /// use parser::Operator;
 ///
+/// // A is infix, B is prefix or infix, C is postfix
 /// #[derive(Clone, Copy, Debug)]
 /// enum MyOperator {
 ///     A,
 ///     B,
+///     C,
 /// }
 ///
 /// impl Operator for MyOperator {
@@ -99,15 +110,31 @@ where
 ///         let op = match input.chars().next() {
 ///             Some('[') => Some(Self::A),
 ///             Some(']') => Some(Self::B),
+///             Some('x') => Some(Self::C),
 ///             _ => None,
 ///         };
 ///         op.map(|op| (&input[1..], op))
 ///     }
 ///
-///     fn precedence(&self) -> (usize, usize) {
+///     fn infix_precedence(&self) -> Option<(usize, usize)> {
 ///         match self {
-///             Self::A => (1, 2),
-///             Self::B => (4, 3),
+///             Self::A => Some((1, 2)),
+///             Self::B => Some((4, 3)),
+///             _ => None,
+///         }
+///     }
+///
+///     fn prefix_precedence(&self) -> Option<usize> {
+///         match self {
+///             Self::B => Some(5),
+///             _ => None,
+///         }
+///     }
+///
+///     fn postfix_precedence(&self) -> Option<usize> {
+///         match self {
+///             Self::C => Some(7),
+///             _ => None,
 ///         }
 ///     }
 ///
@@ -115,25 +142,27 @@ where
 ///         match self {
 ///             Self::A => "[".to_string(),
 ///             Self::B => "]".to_string(),
+///             Self::C => "x".to_string(),
 ///         }
 ///     }
 /// }
 /// ```
 
-// TODO: differentiate between prefix, postfix and infix operators
-// TODO: think about if pointer::offset_from is safe to use, allowing removal of usize return parameter
 pub trait Operator: Sized + Clone {
     fn parse(input: &str) -> Option<(&str, Self)>;
     // defines precedence and associativity of infix operators. lower values impl lower precedence.
     // for op => (x, y) op is left-associative if x <= y, and right-associative if x > y. Each level
     // of precedence should begin with an odd number.
-    // TODO: possible macro generation
     fn infix_precedence(&self) -> Option<(usize, usize)> {
         None
     }
+    // defines precedence of prefix operators. lower values impl lower precedence.
+    // Each level of precedence should begin with an odd number.
     fn prefix_precedence(&self) -> Option<usize> {
         None
     }
+    // defines precedence of postfix operators. lower values impl lower precedence.
+    // Each level of precedence should begin with an odd number.
     fn postfix_precedence(&self) -> Option<usize> {
         None
     }
@@ -146,7 +175,8 @@ pub trait Operator: Sized + Clone {
 /// Optional trait to define operator behaviour and allow access to the [`calculate`](crate::Tree::calculate) method of [`Tree`](crate::Tree).
 ///
 /// # Implementing Calculate
-/// In [`Calculate::apply`], operator arguments are passed in as a slice of `u32`s.
+/// In [`Calculate::apply`], operator arguments are passed in as a slice of `u32`s. If the operator is parsed as infix or postfix, the slice
+/// will always be length 1. For infix operators, it will be length 2.
 /// ```
 /// use parser::Calculate;
 ///
@@ -159,7 +189,13 @@ pub trait Operator: Sized + Clone {
 ///     fn apply(&self, args: &[u32]) -> u32 {
 ///         match self {
 ///             Self::A => args[0] + args[1],
-///             Self::B => args[0] * args[0].pow(args[1]),
+///             Self::B => {
+///                 if args.len() == 1 {
+///                     args[0]
+///                 } else {
+///                     args[0] * args[0].pow(args[1])
+///                 }
+///             },
 ///         }
 ///     }
 /// }

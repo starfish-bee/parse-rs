@@ -39,11 +39,11 @@
 //!             .flatten()
 //!     }
 //!
-//!     fn precedence(&self) -> (usize, usize) {
+//!     fn infix_precedence(&self) -> Option<(usize, usize)> {
 //!         match self {
-//!             Self::Add => (6, 5),
-//!             Self::Sub => (2, 1),
-//!             Self::MysteryOperator => (3, 4),
+//!             Self::Add => Some((6, 5)),
+//!             Self::Sub => Some((2, 1)),
+//!             Self::MysteryOperator => Some((3, 4)),
 //!         }
 //!     }
 //! }
@@ -160,8 +160,9 @@ pub use derive_operator::Operator;
 /// Function that takes an input `&str` and parses it as a [`Tree<T>`], where `T` is a user-defined
 /// type that implements [`Operator`].
 ///
-/// This function expects an input that is a series of valid `u32` values and infix operators, with values
-/// bookending the input `&str`. Parenthesis may wrap any valid expression.
+/// This function expects an input that is a series of valid `u32` values and operators.
+/// Parenthesis may wrap any valid expression. Operators will be parsed as infix before postfix,
+/// so operators with both definitions will always be treated as infix.
 pub fn parse<T>(input: &str) -> Result<Tree<T>, ErrorKind>
 where
     T: Operator,
@@ -349,8 +350,8 @@ mod test {
         assert_eq!(format!("{:?}", parse::<Op>("*1").unwrap()), "Mul [1]");
         assert_eq!(format!("{:?}", parse::<Op>("1!").unwrap()), "Fact [1]");
         assert_eq!(
-            format!("{:?}", parse::<Op>("1+1+2").unwrap()),
-            "Add [Add [1, 1], 2]"
+            format!("{:?}", parse::<Op>("1+*1+2").unwrap()),
+            "Add [Add [1, Mul [1]], 2]"
         );
         assert_eq!(
             format!("{:?}", parse::<Op>("1+1*2").unwrap()),
