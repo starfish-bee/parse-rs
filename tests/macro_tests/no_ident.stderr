@@ -1,4 +1,4 @@
-error: expected name-value pair 'ident = 'x''
+error: expected list attribute 'ident('x')'
   --> $DIR/no_ident.rs:11:5
    |
 11 |     QMark,

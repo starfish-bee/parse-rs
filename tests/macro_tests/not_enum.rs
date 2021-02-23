@@ -2,13 +2,13 @@ use parser::*;
 
 #[derive(Operator, Debug, Clone, Copy)]
 struct Op {
-    #[assoc = "right"]
-    #[ident = "#"]
+    #[assoc("right")]
+    #[ident("#")]
     hash: char,
-    #[assoc = "right"]
-    #[ident = "^"]
+    #[assoc("right")]
+    #[ident("^")]
     caret: char,
-    #[ident = "?"]
+    #[ident("?")]
     qmark: char,
 }
 

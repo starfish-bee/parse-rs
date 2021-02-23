@@ -4,6 +4,7 @@ use parser::*;
 enum Op {
     #[assoc("right")]
     #[ident("#")]
+    #[weird("")]
     Hash,
     #[assoc("right")]
     #[ident("^")]
@@ -12,7 +13,4 @@ enum Op {
     QMark,
 }
 
-fn main() {
-    let tree = parse::<Op>("4^(3#2)?1").unwrap();
-    assert_eq!(format!("{:?}", tree), "Caret [4, QMark [Hash [3, 2], 1]]");
-}
+fn main() {}

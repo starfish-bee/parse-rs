@@ -3,7 +3,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse::Error, parse_macro_input, spanned::Spanned, Data, DeriveInput, Ident, Lit, LitStr, Meta,
-    Variant,
+    NestedMeta, Variant,
 };
 
 #[proc_macro_derive(Operator, attributes(ident, assoc))]
@@ -42,16 +42,20 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
 
     // precedence starts at 1, is always odd, and increases with field order
     // associtivity is indicated by whether the left of right value has +1
-    let prec = defs.iter().enumerate().map(|(i, def)| {
+    let prec = defs.iter().enumerate().filter_map(|(i, def)| {
+        let assoc = match &def.infix {
+            Some(a) => a,
+            None => return None,
+        };
         let field = &def.field;
         let base = 2 * i + 1;
         let mut lhs = base;
         let mut rhs = base;
-        match def.assoc {
+        match assoc {
             Assoc::Left => rhs += 1,
             Assoc::Right => lhs += 1,
         }
-        quote!(Self::#field => (#lhs, #rhs))
+        Some(quote!(Self::#field => Some((#lhs, #rhs))))
     });
 
     let toks = quote! {
@@ -63,9 +67,10 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
                     .iter()
                     .find_map(|(op, var)| inp.strip_prefix(op).map(|out| (out, *var)))
             }
-            fn precedence(&self) -> (usize, usize) {
+            fn infix_precedence(&self) -> Option<(usize, usize)> {
                 match self {
-                    #(#prec),*
+                    #(#prec,)*
+                    _ => None,
                 }
             }
             fn to_string(&self) -> String {
@@ -98,7 +103,9 @@ fn get_enum(input: DeriveInput) -> Result<(Ident, Vec<Variant>), Error> {
 struct OperatorDef {
     field: Ident,
     ident: LitStr,
-    assoc: Assoc,
+    infix: Option<Assoc>,
+    _prefix: bool,
+    _postfix: bool,
 }
 
 enum Assoc {
@@ -117,29 +124,29 @@ impl OperatorDef {
                 return Err(e);
             }
 
-            // a name-value pair attribute is currently the only type supported
+            // a list attribute is currently the only type supported
             match attr.parse_meta()? {
                 Meta::Path(path) => {
                     return Err(Error::new(
                         path.span(),
-                        "expected name-value pair attribute 'ident = 'x''",
-                    ))
-                }
-                Meta::List(list) => {
-                    return Err(Error::new(
-                        list.span(),
-                        "expected name-value pair attribute 'ident = 'x''",
+                        "expected list attribute 'ident('x')'",
                     ))
                 }
                 Meta::NameValue(attr) => {
-                    if attr.path.is_ident("ident") {
-                        if let Lit::Str(litstr) = attr.lit {
-                            ident = Some(litstr)
+                    return Err(Error::new(
+                        attr.span(),
+                        "expected list attribute 'ident('x')'",
+                    ))
+                }
+                Meta::List(list) => {
+                    if list.path.is_ident("ident") {
+                        if let Some(NestedMeta::Lit(Lit::Str(litstr))) = list.nested.first() {
+                            ident = Some(litstr.clone())
                         } else {
-                            return Err(Error::new(attr.lit.span(), "expected string literal"));
+                            return Err(Error::new(list.nested.span(), "expected string literal"));
                         }
-                    } else if attr.path.is_ident("assoc") {
-                        if let Lit::Str(litstr) = attr.lit {
+                    } else if list.path.is_ident("assoc") {
+                        if let Some(NestedMeta::Lit(Lit::Str(litstr))) = list.nested.first() {
                             match &litstr.value()[..] {
                                 "left" => assoc = Some(Assoc::Left),
                                 "right" => assoc = Some(Assoc::Right),
@@ -152,10 +159,12 @@ impl OperatorDef {
                             }
                         } else {
                             return Err(Error::new(
-                                attr.lit.span(),
+                                list.nested.span(),
                                 "expected string literal 'left' or 'right'",
                             ));
                         }
+                    } else {
+                        return Err(Error::new(list.path.span(), "unrecognised attribute"));
                     }
                 }
             }
@@ -167,7 +176,7 @@ impl OperatorDef {
             None => {
                 return Err(Error::new(
                     var.span(),
-                    "expected name-value pair 'ident = 'x''",
+                    "expected list attribute 'ident('x')'",
                 ))
             }
         };
@@ -180,7 +189,9 @@ impl OperatorDef {
         Ok(Self {
             field: var.ident,
             ident,
-            assoc,
+            infix: Some(assoc),
+            _prefix: false,
+            _postfix: false,
         })
     }
 }

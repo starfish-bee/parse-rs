@@ -80,14 +80,14 @@ use parser::*;
 
 #[derive(Debug, Clone, Copy, Operator)]
 enum MyOperator {
-    #[ident = "["]
-    #[assoc = "right"]
+    #[ident("[")]
+    #[assoc("right")]
     Sub,
-    #[ident = "mystery!"]
-    #[assoc = "left"]
+    #[ident("mystery!")]
+    #[assoc("left")]
     MysteryOperator,
-    #[ident = "add"]
-    #[assoc = "right"]
+    #[ident("add")]
+    #[assoc("right")]
     Add,
 }
 
@@ -130,13 +130,13 @@ pub use tokens::{Calculate, Operator};
 ///
 /// #[derive(Operator, Debug, Copy, Clone)]
 /// enum MyOp {
-///     #[ident = "+"]
-///     #[assoc = "left"]
+///     #[ident("+")]
+///     #[assoc("left")]
 ///     Add,
-///     #[ident = "-"]
+///     #[ident("-")]
 ///     Sub,
-///     #[ident = "/"]
-///     #[assoc = "right"]
+///     #[ident("/")]
+///     #[assoc("right")]
 ///     Div
 /// }
 ///

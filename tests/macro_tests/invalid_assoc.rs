@@ -2,13 +2,13 @@ use parser::*;
 
 #[derive(Operator, Debug, Clone, Copy)]
 enum Op {
-    #[assoc = "up"]
-    #[ident = "#"]
+    #[assoc("up")]
+    #[ident("#")]
     Hash,
-    #[assoc = "right"]
-    #[ident = "^"]
+    #[assoc("right")]
+    #[ident("^")]
     Caret,
-    #[ident = "?"]
+    #[ident("?")]
     QMark,
 }
 

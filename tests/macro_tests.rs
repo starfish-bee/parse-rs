@@ -7,4 +7,5 @@ fn macro_tests() {
     t.compile_fail("tests/macro_tests/invalid_assoc.rs");
     t.compile_fail("tests/macro_tests/invalid_ident.rs");
     t.compile_fail("tests/macro_tests/no_ident.rs");
+    t.compile_fail("tests/macro_tests/invalid_attribute.rs");
 }

@@ -1,0 +1,11 @@
+error: unrecognised attribute
+ --> $DIR/invalid_attribute.rs:7:7
+  |
+7 |     #[weird("")]
+  |       ^^^^^
+
+error: cannot find attribute `weird` in this scope
+ --> $DIR/invalid_attribute.rs:7:7
+  |
+7 |     #[weird("")]
+  |       ^^^^^
