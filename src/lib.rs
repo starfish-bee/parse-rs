@@ -81,7 +81,7 @@ use parser::*;
 #[derive(Debug, Clone, Copy, Operator)]
 enum MyOperator {
     #[ident("[")]
-    #[assoc("right")]
+    #[assoc("right", "prefix")]
     Sub,
     #[ident("mystery!")]
     #[assoc("left")]
@@ -91,9 +91,9 @@ enum MyOperator {
     Add,
 }
 
-let input = "(5 [ 8 [ 4) add 1 mystery! 1";
+let input = "(5 [ 8 [ 4) add 1 mystery! [ 1";
 let tree = parse::<MyOperator>(input).unwrap();
-assert_eq!(format!("{:?}", tree), "MysteryOperator [Add [Sub [5, Sub [8, 4]], 1], 1]");
+assert_eq!(format!("{:?}", tree), "MysteryOperator [Add [Sub [5, Sub [8, 4]], 1], Sub [1]]");
 ```
 "#
 )]
@@ -118,8 +118,10 @@ pub use tokens::{Calculate, Operator};
 /// This macro will implement [`Operator`] such that each `Enum` field is a separate operator, with the order of
 /// precedence being equal to the order of fields. There two associated attributes, `ident` and `assoc`. The `ident`
 /// attribute must be provided for each field, and contains the `&str` that should be parsed as that field. The
-/// optional `assoc` attribute can be either "`"left"` or `"right"`, defining the associativity of the field. If
-/// no `assoc` attribute is provided, the field will be left-associative by default.
+/// optional `assoc` attribute can be `"left"`, `"right"`, `"prefix"` or `"postfix"`, defining the operator as infix
+/// with left or right associativity, prefix, or postfix. Operators can not be left and right associted at the same time,
+/// but all other combinations are possible (see [`parse`] for an explanation of parsing behaviour when operators have
+/// overlapping types). If no `assoc` attribute is provided, the field will be left-associative infix by default.
 ///
 /// This macro will use the `ident` attribute value as the string representation of each operator field
 /// (see [`ParseError`](crate::error::ParseError))
@@ -131,20 +133,20 @@ pub use tokens::{Calculate, Operator};
 /// #[derive(Operator, Debug, Copy, Clone)]
 /// enum MyOp {
 ///     #[ident("+")]
-///     #[assoc("left")]
 ///     Add,
 ///     #[ident("-")]
+///     #[assoc("left", "prefix")]
 ///     Sub,
 ///     #[ident("/")]
 ///     #[assoc("right")]
 ///     Div
 /// }
 ///
-/// let input_1 = "8 / 4 / 2";
+/// let input_1 = "- 8 / 4 / 2";
 /// let input_2 = "2 - 1 + 1 + 2";
 /// assert_eq!(
 ///     format!("{:?}", parse::<MyOp>(input_1).unwrap()),
-///     "Div [8, Div [4, 2]]"
+///     "Div [Sub [8], Div [4, 2]]"
 /// );
 /// assert_eq!(
 ///     format!("{:?}", parse::<MyOp>(input_2).unwrap()),

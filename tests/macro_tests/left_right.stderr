@@ -1,0 +1,5 @@
+error: associativity cannot be both 'left' and 'right'
+ --> $DIR/left_right.rs:5:21
+  |
+5 |     #[assoc("left", "right")]
+  |                     ^^^^^^^
