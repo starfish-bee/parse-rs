@@ -2,7 +2,7 @@ use parser::*;
 
 #[derive(Operator, Debug, Clone, Copy)]
 enum Op {
-    #[assoc("right")]
+    #[assoc("right", "prefix")]
     #[ident("#")]
     Hash,
     #[assoc("right")]

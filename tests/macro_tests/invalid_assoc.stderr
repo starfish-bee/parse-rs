@@ -1,4 +1,4 @@
-error: expected 'left' or 'right'
+error: expected 'left', 'right', 'prefix' or 'postfix'
  --> $DIR/invalid_assoc.rs:5:13
   |
 5 |     #[assoc("up")]

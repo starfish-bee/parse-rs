@@ -117,6 +117,9 @@ impl OperatorDef {
     fn from_variant(var: Variant) -> Result<Self, Error> {
         let mut ident: Option<LitStr> = None;
         let mut assoc: Option<Assoc> = None;
+        let mut _prefix = false;
+        let mut _postfix = false;
+
         for attr in var.attrs.iter() {
             let meta = attr.parse_meta();
             // using if let pattern to reduce nesting
@@ -146,22 +149,44 @@ impl OperatorDef {
                             return Err(Error::new(list.nested.span(), "expected string literal"));
                         }
                     } else if list.path.is_ident("assoc") {
-                        if let Some(NestedMeta::Lit(Lit::Str(litstr))) = list.nested.first() {
-                            match &litstr.value()[..] {
-                                "left" => assoc = Some(Assoc::Left),
-                                "right" => assoc = Some(Assoc::Right),
-                                _ => {
-                                    return Err(Error::new(
-                                        litstr.span(),
-                                        "expected 'left' or 'right'",
-                                    ))
+                        // assoc attribute must contain some of: 'left', 'right', 'infix' or 'postfix'
+                        // a single attribute must not contain both 'left' and 'right'
+                        for meta in list.nested.into_iter() {
+                            if let NestedMeta::Lit(Lit::Str(litstr)) = meta {
+                                match &litstr.value()[..] {
+                                    "left" => {
+                                        match assoc {
+                                            Some(Assoc::Right) => return Err(Error::new(
+                                                litstr.span(),
+                                                "associativity cannot be both 'left' and 'right'",
+                                            )),
+                                            _ => assoc = Some(Assoc::Left),
+                                        }
+                                    }
+                                    "right" => {
+                                        match assoc {
+                                            Some(Assoc::Left) => return Err(Error::new(
+                                                litstr.span(),
+                                                "associativity cannot be both 'left' and 'right'",
+                                            )),
+                                            _ => assoc = Some(Assoc::Right),
+                                        }
+                                    }
+                                    "prefix" => _prefix = true,
+                                    "postfix" => _postfix = true,
+                                    _ => {
+                                        return Err(Error::new(
+                                            litstr.span(),
+                                            "expected 'left', 'right', 'prefix' or 'postfix'",
+                                        ))
+                                    }
                                 }
+                            } else {
+                                return Err(Error::new(
+                                    meta.span(),
+                                    "expected string literal 'left', 'right', 'prefix' or 'postfix",
+                                ));
                             }
-                        } else {
-                            return Err(Error::new(
-                                list.nested.span(),
-                                "expected string literal 'left' or 'right'",
-                            ));
                         }
                     } else {
                         return Err(Error::new(list.path.span(), "unrecognised attribute"));
@@ -181,17 +206,16 @@ impl OperatorDef {
             }
         };
         // assoc attribute is optional- default behaviour is left-associativity
-        let assoc = match assoc {
-            Some(a) => a,
-            None => Assoc::Left,
-        };
+        if assoc.is_none() & !_prefix & !_postfix {
+            assoc = Some(Assoc::Left);
+        }
 
         Ok(Self {
             field: var.ident,
             ident,
-            infix: Some(assoc),
-            _prefix: false,
-            _postfix: false,
+            infix: assoc,
+            _prefix,
+            _postfix,
         })
     }
 }
