@@ -40,22 +40,43 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
         quote!(Self::#field => #ident.to_string())
     });
 
+    // keep track of precedence
+    let mut infix_base = 1usize;
+    let infix_num = defs.iter().filter_map(|def| def.infix.as_ref()).count();
+    let mut prefix_base = infix_base + 2 * infix_num;
+    let prefix_num = defs.iter().filter(|def| def._prefix).count();
+    let mut postfix_base = prefix_base + 2 * prefix_num;
+
     // precedence starts at 1, is always odd, and increases with field order
     // associtivity is indicated by whether the left of right value has +1
-    let prec = defs.iter().enumerate().filter_map(|(i, def)| {
+    let infix_prec = defs.iter().filter_map(move |def| {
         let assoc = match &def.infix {
             Some(a) => a,
             None => return None,
         };
         let field = &def.field;
-        let base = 2 * i + 1;
-        let mut lhs = base;
-        let mut rhs = base;
+        let mut lhs = infix_base;
+        let mut rhs = infix_base;
+        infix_base += 2;
         match assoc {
             Assoc::Left => rhs += 1,
             Assoc::Right => lhs += 1,
         }
         Some(quote!(Self::#field => Some((#lhs, #rhs))))
+    });
+
+    let prefix_prec = defs.iter().filter(|def| def._prefix).map(move |def| {
+        let field = &def.field;
+        let old_base = prefix_base;
+        prefix_base += 2;
+        quote!(Self::#field => Some(#old_base))
+    });
+
+    let postfix_prec = defs.iter().filter(|def| def._postfix).map(|def| {
+        let field = &def.field;
+        let old_base = postfix_base;
+        postfix_base += 2;
+        quote!(Self::#field => Some(#old_base))
     });
 
     let toks = quote! {
@@ -69,7 +90,19 @@ fn impl_derive_operator(input: DeriveInput) -> Result<TokenStream, Error> {
             }
             fn infix_precedence(&self) -> Option<(usize, usize)> {
                 match self {
-                    #(#prec,)*
+                    #(#infix_prec,)*
+                    _ => None,
+                }
+            }
+            fn prefix_precedence(&self) -> Option<usize> {
+                match self {
+                    #(#prefix_prec,)*
+                    _ => None,
+                }
+            }
+            fn postfix_precedence(&self) -> Option<usize> {
+                match self {
+                    #(#postfix_prec,)*
                     _ => None,
                 }
             }
